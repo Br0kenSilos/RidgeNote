@@ -1,0 +1,130 @@
+{% comment %}
+One narrow reusable row partial for the All Notes
+list surface, built against
+the `.note-list__*` CSS that already existed for it (unused since the
+underlying markup was deleted when Home stopped rendering a full list).
+Reuses the same `row-action-menu`/`.tree-nav__row-menu-*`/
+`.tree-nav__popover-form*` menu foundation already proven by the tree
+and note-detail's own overflow menu -- no new JavaScript is needed.
+
+Also
+included directly by Home's Recent Notes list, which gets the exact
+same Pin/Move/overflow-menu controls, not a lookalike or a stripped-down
+copy. `row_context` selects which already-existing, already-tested
+route each action posts to -- "all_notes" (default) targets the
+dedicated `_all_notes` views (which read `page`/`sort` to return to the
+same page/sort); "home" targets the routes the tree's own per-row menu
+already uses in Home context (`note_pin_set`, `note_move_home`,
+`note_rename_home`, and the bare `note_delete` with
+`data-delete-origin="home"`), every one of which already redirects to
+`home` on its own -- no new route, view, or Home-specific action logic
+was added anywhere. Named `row_context`, not `context`, because
+`{% include ... with context=... %}` collides with Django's own
+internal `context` render kwarg (`ContextDict.__init__() got multiple
+values for argument 'context'`). Expects `note` in the template context
+always; `page`/`sort`/`folders` only meaningful (and only rendered into
+hidden inputs) when `row_context` is "all_notes".
+{% endcomment %}
+<li class="note-list__item" data-note-id="{{ note.id }}">
+  <div class="note-list__row">
+    <div class="note-list__content">
+      <div class="note-list__title-row">
+        {% if note.pinned %}<span class="note-list__pin-badge" role="img" aria-label="Pinned">★</span>{% endif %}
+        <a class="note-list__title" href="{% url 'notes:detail' note.id %}">{{ note.title }}</a>
+      </div>
+      <p class="note-list__meta">
+        <span class="note-list__timestamp">Updated {{ note.modified_at }}</span>
+        <span class="note-list__meta-sep" aria-hidden="true">&middot;</span>
+        <span class="note-list__location">{% if note.folder_id %}in {{ note.folder.name }}{% else %}Unfiled{% endif %}</span>
+        {% include "notes/_note_tag_chips.html" %}
+      </p>
+    </div>
+    <div class="note-list__actions">
+      <form method="post"
+            action="{% if row_context == 'home' %}{% url 'notes:note_pin_set' note.id %}{% else %}{% url 'notes:note_pin_set_all_notes' note.id %}{% endif %}">
+        {% csrf_token %}
+        {% if row_context != 'home' %}
+          <input type="hidden" name="page" value="{{ page }}">
+          <input type="hidden" name="sort" value="{{ sort }}">
+        {% endif %}
+        <input type="hidden" name="pinned" value="{% if note.pinned %}false{% else %}true{% endif %}">
+        <button type="submit"
+                class="icon-button note-list__pin-toggle{% if note.pinned %} note-list__pin-toggle--active{% endif %}"
+                aria-pressed="{% if note.pinned %}true{% else %}false{% endif %}"
+                aria-label="{% if note.pinned %}Unpin note{% else %}Pin note{% endif %}"
+                data-tooltip="{% if note.pinned %}Unpin note{% else %}Pin note{% endif %}">{% include "core/icons/pin.svg" %}</button>
+      </form>
+      <details class="note-list__move-action row-action-menu">
+        <summary class="icon-button" aria-label="Move note" data-tooltip="Move note">{% include "core/icons/move.svg" %}</summary>
+        <div class="tree-nav__row-menu-panel">
+          <form class="tree-nav__popover-form"
+                method="post"
+                action="{% if row_context == 'home' %}{% url 'notes:note_move_home' note.id %}{% else %}{% url 'notes:note_move_all_notes' note.id %}{% endif %}">
+            {% csrf_token %}
+            {% if row_context != 'home' %}
+              <input type="hidden" name="page" value="{{ page }}">
+              <input type="hidden" name="sort" value="{{ sort }}">
+            {% endif %}
+            <label for="note-row-move-{{ note.id }}">Move this note to</label>
+            <select id="note-row-move-{{ note.id }}" name="folder">
+              <option value="" {% if not note.folder_id %}selected{% endif %}>Unfiled</option>
+              {% for folder in folders %}
+                <option value="{{ folder.id }}" {% if folder.id == note.folder_id %}selected{% endif %}>{{ folder.name }}</option>
+              {% endfor %}
+            </select>
+            <div class="tree-nav__popover-form-actions">
+              <button type="button" class="button-link button-link--secondary" data-row-menu-cancel>Cancel</button>
+              <button type="submit">Move</button>
+            </div>
+          </form>
+        </div>
+      </details>
+      <details class="note-list__row-menu row-action-menu">
+        <summary class="tree-nav__row-menu-trigger icon-button" aria-label="Actions for {{ note.title }}">{% include "core/icons/menu-dots.svg" %}</summary>
+        <div class="tree-nav__row-menu-panel">
+          <a class="tree-nav__row-menu-item" href="{% url 'notes:detail' note.id %}">Open</a>
+          <a class="tree-nav__row-menu-item" href="{% url 'notes:detail' note.id %}" target="_blank" rel="noopener">Open in new tab</a>
+          <details class="tree-nav__action tree-nav__action--rename-folder">
+            <summary class="tree-nav__row-menu-item">Rename</summary>
+            <form class="tree-nav__action-form"
+                  method="post"
+                  action="{% if row_context == 'home' %}{% url 'notes:note_rename_home' note.id %}{% else %}{% url 'notes:note_rename_all_notes' note.id %}{% endif %}">
+              {% csrf_token %}
+              {% if row_context != 'home' %}
+                <input type="hidden" name="page" value="{{ page }}">
+                <input type="hidden" name="sort" value="{{ sort }}">
+              {% endif %}
+              <label for="note-row-rename-{{ note.id }}">Rename to</label>
+              <input type="text" id="note-row-rename-{{ note.id }}" name="title" maxlength="255" value="{{ note.title }}">
+              <button type="submit">Rename</button>
+            </form>
+          </details>
+          <a class="tree-nav__row-menu-item" href="{% url 'notes:print' note.id %}" target="_blank" rel="noopener">Print</a>
+          <a class="tree-nav__row-menu-item" href="{% url 'notes:download_text' note.id %}">Download</a>
+          <form method="post" action="{% url 'notes:note_duplicate' note.id %}">
+            {% csrf_token %}
+            <button type="submit" class="tree-nav__row-menu-item">Duplicate</button>
+          </form>
+          {% if row_context == 'home' %}
+            <button type="button"
+                    class="tree-nav__row-menu-item tree-nav__row-menu-item--danger"
+                    data-delete-trigger
+                    data-delete-kind="note"
+                    data-delete-name="{{ note.title }}"
+                    data-delete-action="{% url 'notes:note_delete' note.id %}"
+                    data-delete-origin="home">Move to Trash</button>
+          {% else %}
+            <button type="button"
+                    class="tree-nav__row-menu-item tree-nav__row-menu-item--danger"
+                    data-delete-trigger
+                    data-delete-kind="note"
+                    data-delete-name="{{ note.title }}"
+                    data-delete-action="{% url 'notes:note_delete_all_notes' note.id %}"
+                    data-delete-page="{{ page }}"
+                    data-delete-sort="{{ sort }}">Move to Trash</button>
+          {% endif %}
+        </div>
+      </details>
+    </div>
+  </div>
+</li>

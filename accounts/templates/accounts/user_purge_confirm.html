@@ -1,0 +1,50 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <section class="panel" aria-labelledby="purge-confirm-title">
+    <h1 id="purge-confirm-title">Permanently purge {{ target.username }}?</h1>
+    <p>This action is permanent and cannot be undone. The account can no longer be cancelled or recovered after purge completes.</p>
+    <dl>
+      <dt>Status</dt>
+      <dd>
+        {% if deletion_status.is_purge_eligible %}
+          Pending deletion — eligible for permanent purge
+        {% else %}
+          Pending deletion — recoverable until {{ deletion_status.recovery_deadline }}
+        {% endif %}
+      </dd>
+      <dt>Deletion scheduled</dt>
+      <dd>{{ deletion_status.scheduled_at }}</dd>
+      <dt>Recovery deadline</dt>
+      <dd>{{ deletion_status.recovery_deadline }}</dd>
+      <dt>Active notes</dt>
+      <dd>{{ ownership_counts.active_notes }}</dd>
+      <dt>Trashed notes</dt>
+      <dd>{{ ownership_counts.trashed_notes }}</dd>
+      <dt>Active folders</dt>
+      <dd>{{ ownership_counts.active_folders }}</dd>
+      <dt>Trashed folders</dt>
+      <dd>{{ ownership_counts.trashed_folders }}</dd>
+      <dt>Tags</dt>
+      <dd>{{ ownership_counts.tags }}</dd>
+    </dl>
+    <p>This will permanently delete the user account and all of its owned notes, folders, tags, and their associations.</p>
+    <p>The username will become available for reuse immediately after this account is purged.</p>
+    <p>Historical audit records will retain a text snapshot of the username after the account is removed.</p>
+    <p>Consider confirming that a recent backup exists before proceeding. This action cannot be undone.</p>
+    {% if is_self %}
+      <p>You cannot purge your own account. Another administrator must perform this action.</p>
+      <p><a class="button-link button-link--secondary" href="{% url 'accounts:user_detail' target.id %}">Cancel</a></p>
+    {% else %}
+      <form class="button-row" method="post" action="{% url 'accounts:user_purge' target.id %}">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {% for field in form %}
+          {% include "accounts/_form_field.html" %}
+        {% endfor %}
+        <button type="submit" class="button-link--danger">Permanently purge</button>
+        <a class="button-link button-link--secondary" href="{% url 'accounts:user_detail' target.id %}">Cancel</a>
+      </form>
+    {% endif %}
+  </section>
+{% endblock %}

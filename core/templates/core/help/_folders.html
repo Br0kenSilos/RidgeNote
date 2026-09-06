@@ -1,0 +1,51 @@
+<section aria-labelledby="help-folders" data-help-topic="help-folders">
+  <h2 id="help-folders">Folders</h2>
+
+  <p>
+    Folders give your notes a simple one-level structure. RidgeNote
+    does not support folders nested inside other folders, which keeps
+    the library easy to browse and avoids deeply buried notes. I may
+    consider adding nested folder levels in a future release, but for
+    now that felt counter to the idea of keeping RidgeNote simple.
+  </p>
+
+  <p>
+    A note that is not inside a folder appears under
+    <strong>Unfiled</strong>.
+  </p>
+
+  <h3>Creating and organizing folders</h3>
+  <p>Use <strong>New folder</strong> from the folder tree to create a folder.</p>
+  <p>Once a folder exists, you can:</p>
+  <ul>
+    <li><strong>Rename</strong> it.</li>
+    <li>Move notes into it.</li>
+    <li>Move notes back to <strong>Unfiled</strong>.</li>
+    <li>Use the tree's <strong>Filter</strong> field to narrow the folders and notes currently shown.</li>
+  </ul>
+  <p>
+    See <a href="{% url 'help' %}#help-notes" data-help-topic-link>Notes</a>
+    for more about moving and organizing individual notes.
+  </p>
+
+  <h3>Moving a folder to Trash</h3>
+  <p>
+    Moving a folder to <strong>Trash</strong> also moves the active
+    notes inside that folder to Trash at the same time.
+  </p>
+  <p>
+    If you restore the folder later, RidgeNote restores the notes that
+    were moved to Trash with it, as long as each note is still eligible
+    for recovery.
+  </p>
+  <p>
+    Notes that were already moved out of the folder before it was
+    trashed are not affected. Notes that had already been trashed
+    separately are also handled independently.
+  </p>
+  <p>
+    See <a href="{% url 'help' %}#help-trash-recovery" data-help-topic-link>Trash and Recovery</a>
+    for the recovery periods and what happens after items leave your
+    own Trash.
+  </p>
+</section>

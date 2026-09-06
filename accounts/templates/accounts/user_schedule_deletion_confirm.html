@@ -1,0 +1,37 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <section class="panel" aria-labelledby="schedule-deletion-confirm-title">
+    <h1 id="schedule-deletion-confirm-title">Schedule deletion for {{ target.username }}?</h1>
+    {% if target.is_active %}
+      <p>
+        This will disable the account immediately and begin a seven-day recovery period. All
+        owned data remains unchanged, and deletion can be cancelled at any time before permanent
+        purge.
+      </p>
+    {% else %}
+      <p>
+        This account is already disabled. Scheduling deletion begins a seven-day recovery period.
+        If deletion is cancelled, the account will remain disabled because that was its state
+        before scheduling.
+      </p>
+    {% endif %}
+    <dl>
+      <dt>Active notes</dt>
+      <dd>{{ ownership_counts.active_notes }}</dd>
+      <dt>Trashed notes</dt>
+      <dd>{{ ownership_counts.trashed_notes }}</dd>
+      <dt>Active folders</dt>
+      <dd>{{ ownership_counts.active_folders }}</dd>
+      <dt>Trashed folders</dt>
+      <dd>{{ ownership_counts.trashed_folders }}</dd>
+      <dt>Tags</dt>
+      <dd>{{ ownership_counts.tags }}</dd>
+    </dl>
+    <form class="button-row" method="post" action="{% url 'accounts:user_schedule_deletion' target.id %}">
+      {% csrf_token %}
+      <button type="submit">Schedule deletion</button>
+      <a class="button-link button-link--secondary" href="{% url 'accounts:user_detail' target.id %}">Cancel</a>
+    </form>
+  </section>
+{% endblock %}

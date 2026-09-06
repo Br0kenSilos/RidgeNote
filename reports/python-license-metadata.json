@@ -1,0 +1,170 @@
+[
+  {
+    "name": "asgiref",
+    "version": "3.11.1",
+    "license": "BSD-3-Clause",
+    "license_expression": null,
+    "classifiers": [
+      "License :: OSI Approved :: BSD License"
+    ]
+  },
+  {
+    "name": "build",
+    "version": "1.5.0",
+    "license": null,
+    "license_expression": "MIT",
+    "classifiers": []
+  },
+  {
+    "name": "click",
+    "version": "8.4.2",
+    "license": null,
+    "license_expression": "BSD-3-Clause",
+    "classifiers": []
+  },
+  {
+    "name": "coverage",
+    "version": "7.14.3",
+    "license": "Apache-2.0",
+    "license_expression": null,
+    "classifiers": []
+  },
+  {
+    "name": "Django",
+    "version": "5.2.15",
+    "license": null,
+    "license_expression": "BSD-3-Clause",
+    "classifiers": []
+  },
+  {
+    "name": "gunicorn",
+    "version": "26.0.0",
+    "license": null,
+    "license_expression": "MIT",
+    "classifiers": []
+  },
+  {
+    "name": "iniconfig",
+    "version": "2.3.0",
+    "license": null,
+    "license_expression": "MIT",
+    "classifiers": []
+  },
+  {
+    "name": "packaging",
+    "version": "26.2",
+    "license": null,
+    "license_expression": "Apache-2.0 OR BSD-2-Clause",
+    "classifiers": []
+  },
+  {
+    "name": "pip",
+    "version": "26.1.2",
+    "license": null,
+    "license_expression": "MIT",
+    "classifiers": []
+  },
+  {
+    "name": "pip-tools",
+    "version": "7.5.3",
+    "license": "BSD",
+    "license_expression": null,
+    "classifiers": [
+      "License :: OSI Approved :: BSD License"
+    ]
+  },
+  {
+    "name": "pluggy",
+    "version": "1.6.0",
+    "license": "MIT",
+    "license_expression": null,
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ]
+  },
+  {
+    "name": "psycopg",
+    "version": "3.3.4",
+    "license": null,
+    "license_expression": "LGPL-3.0-only",
+    "classifiers": []
+  },
+  {
+    "name": "Pygments",
+    "version": "2.20.0",
+    "license": null,
+    "license_expression": "BSD-2-Clause",
+    "classifiers": []
+  },
+  {
+    "name": "pyproject_hooks",
+    "version": "1.2.0",
+    "license": null,
+    "license_expression": null,
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ]
+  },
+  {
+    "name": "pytest",
+    "version": "9.1.1",
+    "license": null,
+    "license_expression": "MIT",
+    "classifiers": []
+  },
+  {
+    "name": "pytest-cov",
+    "version": "7.1.0",
+    "license": null,
+    "license_expression": "MIT",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ]
+  },
+  {
+    "name": "pytest-django",
+    "version": "4.12.0",
+    "license": "pytest-django is released under the BSD (3-clause) license\n----------------------------------------------------------\nCopyright (c) 2015-2018, pytest-django authors (see AUTHORS file)\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n * Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n * Redistributions in binary form must reproduce the above copyright notice,\n   this list of conditions and the following disclaimer in the documentation\n   and/or other materials provided with the distribution.\n * The names of its contributors may not be used to endorse or promote products\n   derived from this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR\nANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON\nANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\nSOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n\nThis version of pytest-django is a fork of pytest_django created by Ben Firshman.\n---------------------------------------------------------------------------------\nCopyright (c) 2009, Ben Firshman\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n * Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n * Redistributions in binary form must reproduce the above copyright notice,\n   this list of conditions and the following disclaimer in the documentation\n   and/or other materials provided with the distribution.\n * The names of its contributors may not be used to endorse or promote products\n   derived from this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR\nANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON\nANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\nSOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+    "license_expression": null,
+    "classifiers": [
+      "License :: OSI Approved :: BSD License"
+    ]
+  },
+  {
+    "name": "ruff",
+    "version": "0.15.20",
+    "license": null,
+    "license_expression": "MIT",
+    "classifiers": []
+  },
+  {
+    "name": "setuptools",
+    "version": "82.0.1",
+    "license": null,
+    "license_expression": "MIT",
+    "classifiers": []
+  },
+  {
+    "name": "sqlparse",
+    "version": "0.5.5",
+    "license": null,
+    "license_expression": null,
+    "classifiers": [
+      "License :: OSI Approved :: BSD License"
+    ]
+  },
+  {
+    "name": "wheel",
+    "version": "0.47.0",
+    "license": null,
+    "license_expression": "MIT",
+    "classifiers": []
+  },
+  {
+    "name": "whitenoise",
+    "version": "6.12.0",
+    "license": null,
+    "license_expression": "MIT",
+    "classifiers": []
+  }
+]

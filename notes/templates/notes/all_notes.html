@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}All notes - RidgeNote{% endblock %}
+
+{% block main_class %}content-shell content-shell--workspace content-shell--all-notes{% endblock %}
+
+{% block content %}
+  <section class="workspace-shell workspace-shell--all-notes" data-tree-shell>
+    <div class="workspace-shell__layout">
+      {% include "notes/_workspace_tree_rail.html" with id_prefix="allnotes" tree_origin="all_notes" %}
+      <section class="all-notes-panel" aria-labelledby="all-notes-heading">
+        <div class="all-notes-panel__header">
+          <h1 id="all-notes-heading" class="all-notes-panel__heading">All notes</h1>
+          {% if page_obj.object_list %}
+            <!-- The populated state needs its own
+                 page-local creation control, reachable even when the tree is
+                 collapsed or the drawer is closed -- reuses the exact
+                 same `notes:create` route/Unfiled-only semantics as
+                 Home's own New Note control. Scoped to the populated
+                 branch only so the existing empty-state New Note forms
+                 below never gain an unintended duplicate. -->
+            <form class="inline-form" method="post" action="{% url 'notes:create' %}">
+              {% csrf_token %}
+              <button type="submit" class="home-dashboard__new-note">New Note</button>
+            </form>
+          {% endif %}
+          <form class="all-notes-sort-form" method="get" action="{% url 'notes:all_notes' %}">
+            <label for="all-notes-sort-select" class="visually-hidden">Sort by</label>
+            <select id="all-notes-sort-select" name="sort">
+              {% for value, label in sort_choices %}
+                <option value="{{ value }}" {% if value == sort %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="all-notes-sort-form__apply">Apply</button>
+          </form>
+        </div>
+
+        {% if page_obj.object_list %}
+          <ul class="note-list">
+            {% for note in page_obj.object_list %}
+              {% include "notes/_all_notes_row.html" with note=note page=page_obj.number sort=sort folders=folders row_context="all_notes" %}
+            {% endfor %}
+          </ul>
+          {% if page_obj.paginator.num_pages > 1 %}
+            <nav class="all-notes-pagination" aria-label="Pagination">
+              {% if page_obj.has_previous %}
+                <a class="all-notes-pagination__link" href="?page={{ page_obj.previous_page_number }}&amp;sort={{ sort }}">Previous</a>
+              {% else %}
+                <span class="all-notes-pagination__disabled">Previous</span>
+              {% endif %}
+              <span class="all-notes-pagination__status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+              {% if page_obj.has_next %}
+                <a class="all-notes-pagination__link" href="?page={{ page_obj.next_page_number }}&amp;sort={{ sort }}">Next</a>
+              {% else %}
+                <span class="all-notes-pagination__disabled">Next</span>
+              {% endif %}
+            </nav>
+          {% endif %}
+        {% elif all_notes_has_trashed_notes %}
+          <div class="empty-state empty-state--compact">
+            <h2>No active notes</h2>
+            <p>Create a new note to start writing again, or visit <a href="{% url 'notes:trash' %}">Trash</a> to restore something you still need.</p>
+            <form class="inline-form" method="post" action="{% url 'notes:create' %}">
+              {% csrf_token %}
+              <button type="submit">New Note</button>
+            </form>
+          </div>
+        {% else %}
+          <div class="empty-state empty-state--compact">
+            <h2>No notes yet</h2>
+            <p>Create your first note and start writing. You can organize it later as your scratch pad grows.</p>
+            <form class="inline-form" method="post" action="{% url 'notes:create' %}">
+              {% csrf_token %}
+              <button type="submit">New Note</button>
+            </form>
+          </div>
+        {% endif %}
+      </section>
+    </div>
+  </section>
+
+  {% include "notes/_nav_drawer.html" %}
+{% endblock %}

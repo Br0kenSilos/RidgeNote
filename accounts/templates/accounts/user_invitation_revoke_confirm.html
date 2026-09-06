@@ -1,0 +1,13 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <section class="panel panel--confirm-compact" aria-labelledby="revoke-confirm-title">
+    <h1 id="revoke-confirm-title">Revoke invitation for {{ target.username }}?</h1>
+    <p>Revoking invalidates the current invitation link. The account remains setup-incomplete and a new invitation can be issued later.</p>
+    <form class="button-row" method="post" action="{% url 'accounts:user_invitation_revoke' target.id %}">
+      {% csrf_token %}
+      <button type="submit" class="button-link--danger">Revoke invitation</button>
+      <a class="button-link button-link--secondary" href="{% url 'accounts:user_detail' target.id %}">Cancel</a>
+    </form>
+  </section>
+{% endblock %}

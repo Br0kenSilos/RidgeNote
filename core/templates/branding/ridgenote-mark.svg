@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 160 96"
+     role="img"
+     {% if decorative %}aria-hidden="true"{% else %}aria-labelledby="ridgenoteMarkTitle"{% endif %}>
+  {% if not decorative %}<title id="ridgenoteMarkTitle">RidgeNote ridge mark</title>{% endif %}
+
+  <!--
+    RidgeNote mark
+    Theme-aware flat facets. Intended to be inlined so the CSS custom
+    properties can inherit from the surrounding theme.
+  -->
+
+  <!-- Left / shorter ridge -->
+  <polygon points="8,78 40,34 58,54 38,78"
+           fill="var(--logo-tone-1, #b9ccff)"/>
+  <polygon points="40,34 58,54 49,64 32,51"
+           fill="var(--logo-tone-2, #8fb8ff)"/>
+  <polygon points="8,78 32,51 49,64 38,78"
+           fill="var(--logo-tone-2, #8fb8ff)"/>
+  <polygon points="38,78 49,64 67,78"
+           fill="var(--logo-tone-3, #5f8ff0)"/>
+
+  <!-- Taller / right ridge -->
+  <polygon points="49,64 88,16 109,45 72,78 67,78"
+           fill="var(--logo-tone-3, #5f8ff0)"/>
+  <polygon points="88,16 109,45 151,78 116,78 101,58"
+           fill="var(--logo-tone-4, #2556b8)"/>
+</svg>

@@ -1,0 +1,72 @@
+<div id="workspace-drawer"
+     class="workspace-drawer"
+     data-drawer
+     role="dialog"
+     aria-modal="true"
+     aria-label="Navigation"
+     data-open="false"
+     hidden
+     inert>
+  <div class="workspace-drawer__header">
+    <a class="brand-link" href="{% url 'home' %}"><span class="brand-mark">{% include "branding/ridgenote-mark.svg" with decorative=True %}</span>RidgeNote</a>
+    <button type="button"
+            class="global-search-trigger"
+            data-global-search-toggle
+            aria-expanded="false"
+            aria-controls="global-search-panel">Search</button>
+    <a href="{% url 'help' %}"
+       class="help-trigger"
+       data-help-toggle
+       aria-label="Help"
+       aria-expanded="false"
+       aria-controls="help-panel">?</a>
+    <button type="button"
+            class="workspace-drawer__close button-link button-link--secondary"
+            data-drawer-close
+            aria-label="Close navigation">
+      Close
+    </button>
+  </div>
+  <nav class="workspace-drawer__nav" aria-label="App navigation">
+    <a href="{% url 'home' %}">Home</a>
+  </nav>
+  <nav class="workspace-drawer__tree" aria-label="Note navigation">
+    {% include "notes/_tree_nav.html" with id_prefix="drawer" %}
+  </nav>
+  <div class="workspace-drawer__account">
+    <span class="workspace-drawer__account-identity">Signed in as {{ request.user.display_label }}</span>
+    <a class="account-menu__item" href="{% url 'accounts:account' %}"{% if request.resolver_match.url_name == "account" %} aria-current="page"{% endif %}>Account</a>
+    <a class="account-menu__item" href="{% url 'accounts:preferences' %}"{% if request.resolver_match.url_name == "preferences" %} aria-current="page"{% endif %}>Preferences</a>
+    <a class="account-menu__item" href="{% url 'accounts:tag_management' %}"{% if request.resolver_match.url_name == "tag_management" %} aria-current="page"{% endif %}>Tag manager</a>
+    <a class="account-menu__item" href="{% url 'notes:full_search' %}"{% if request.resolver_match.url_name == "full_search" %} aria-current="page"{% endif %}>Full Search</a>
+    <div class="account-menu__theme-group" data-theme-quick-group>
+      <span class="account-menu__theme-label" id="account-menu-theme-label-drawer">Theme</span>
+      <form method="post"
+            action="{% url 'accounts:quick_set_theme' %}"
+            class="account-menu__theme-form"
+            data-theme-quick-form
+            aria-labelledby="account-menu-theme-label-drawer">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        {% for value, label in RIDGENOTE_THEME_CHOICES %}
+          <button type="submit"
+                  name="theme"
+                  value="{{ value }}"
+                  class="account-menu__theme-option"
+                  data-theme-quick-option="{{ value }}"
+                  {% if request.user.theme == value %}aria-current="true"{% endif %}>{{ label }}</button>
+        {% endfor %}
+        <span class="visually-hidden" aria-live="polite" data-theme-quick-status></span>
+      </form>
+    </div>
+    <a class="account-menu__item" href="{% url 'notes:library_backup_download' %}">
+      Download library backup
+    </a>
+    {% include "notes/_account_menu_trash_items.html" %}
+    <form class="logout-form account-menu__signout" method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="account-menu__item account-menu__item--danger">Sign out</button>
+    </form>
+  </div>
+</div>
+<div class="workspace-drawer-backdrop" data-drawer-backdrop hidden></div>

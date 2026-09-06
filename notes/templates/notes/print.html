@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ note.title }} - RidgeNote Print</title>
+    <style>
+      .note-content {
+        white-space: pre-wrap;
+      }
+      .print-controls {
+        margin: 0 0 1rem;
+      }
+      @media print {
+        .print-controls {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="print-controls">
+        <button type="button" data-print-trigger>Print</button>
+      </div>
+      <h1>{{ note.title }}</h1>
+      <div class="note-content">{{ rendered_body }}</div>
+    </main>
+    <script>
+      document.querySelector("[data-print-trigger]").addEventListener("click", () => {
+        window.print();
+      });
+      window.addEventListener("load", () => {
+        window.print();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Empty Trash - RidgeNote{% endblock %}
+
+{% block content %}
+  <section class="panel" aria-labelledby="trash-empty-confirm-title">
+    <h1 id="trash-empty-confirm-title">Empty Trash?</h1>
+    <p>
+      This will remove {{ notes_count }} note{{ notes_count|pluralize }} and
+      {{ folders_count }} folder{{ folders_count|pluralize }} from your Trash.
+    </p>
+    <p>
+      Emptying Trash removes these items from your Trash immediately. They may remain
+      recoverable by a RidgeNote administrator until their final purge date.
+    </p>
+    <form class="button-row" method="post" action="{% url 'notes:trash_empty' %}">
+      {% csrf_token %}
+      <button type="submit">Empty Trash</button>
+      <a class="button-link button-link--secondary" href="{% url 'notes:trash' %}">Cancel</a>
+    </form>
+  </section>
+{% endblock %}

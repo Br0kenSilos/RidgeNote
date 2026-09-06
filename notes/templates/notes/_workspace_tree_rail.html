@@ -1,0 +1,60 @@
+{% comment %}
+Shared workspace tree rail: the tree-collapse toggle, the tree pane
+itself, and the drag-resize separator. This partial exists
+so Home and note-detail can reuse the
+exact same markup rather than duplicating it, bounded to exactly the
+rail/tree/separator group, not the editor, not any page's own content
+column. Callers wrap this include in `.workspace-shell__layout` and
+supply `id_prefix` exactly as `_tree_nav.html` itself expects.
+
+The collapsed rail's purpose is narrowed to
+exactly one thing -- reveal or hide the note tree. The rail carries no
+Trash icon of its own:
+`_tree_nav.html` already has its own fixed Trash destination
+at the bottom of the expanded tree, which is the only Trash
+affordance this navigation surface offers, avoiding a second, redundant
+destination. The toggle itself is a compact double-chevron icon (rotated by CSS to point the opposite
+direction once expanded) plus dynamic `aria-label`/`data-tooltip` text --
+"Show note tree" / "Hide note tree" -- kept in sync by
+`tree-shell.ts`'s existing `render()` method, which updates
+`aria-expanded`/`aria-label` on every collapse/expand and also
+drives `data-tooltip` the same way.
+`TreeShellController`
+only applies the persisted collapsed state to `[data-tree-shell]` once
+`app.js` runs -- a `defer`red module script, which executes after the
+browser may already have painted this section in its server-rendered
+default (expanded) state. This is a latent gap whenever a real
+full-page navigation happens *from* a
+collapsed tree while the user is looking directly at this area -- every
+other collapsed-tree action either stays client-side or (like the tree's
+own controls) is itself inside the now-hidden pane. New
+folder, reachable from the active-note overflow even while the tree is
+collapsed, is the one path that triggers it: creating a folder navigates back to this same page,
+and the tree would flash open (server default) before immediately
+snapping collapsed again once `app.js` caught up. The synchronous,
+non-deferred script below -- mirroring `base.html`'s own theme
+anti-flash bootstrap -- applies `data-tree-collapsed` before first paint
+instead, so `TreeShellController`'s later, unchanged `render()` call
+finds the state already correct and never visibly changes it.
+{% endcomment %}
+<script>(function(){try{var shell=document.currentScript.closest("[data-tree-shell]");if(shell&&window.localStorage.getItem("ridgenote.tree.collapsed")==="true"){shell.setAttribute("data-tree-collapsed","true");}}catch(e){}})();</script>
+<div class="workspace-shell__tree-rail">
+  <button type="button"
+          class="icon-button workspace-shell__tree-toggle"
+          data-tree-toggle
+          aria-expanded="true"
+          aria-label="Hide note tree"
+          data-tooltip="Hide note tree">{% include "core/icons/chevrons-right.svg" %}</button>
+</div>
+<nav class="workspace-shell__tree" data-tree-pane aria-label="Note navigation">
+  {% include "notes/_tree_nav.html" with id_prefix=id_prefix %}
+</nav>
+<div class="workspace-shell__separator"
+     data-tree-separator
+     role="separator"
+     aria-orientation="vertical"
+     tabindex="0"
+     aria-label="Tree width"
+     aria-valuemin="160"
+     aria-valuemax="400"
+     aria-valuenow="220"></div>

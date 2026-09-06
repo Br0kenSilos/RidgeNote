@@ -1,0 +1,72 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <div class="account-page">
+    <h1>Account</h1>
+
+    <dl>
+      <dt>Username</dt>
+      <dd>{{ request.user.username }}</dd>
+      <dt>Role</dt>
+      <dd>{{ request.user.get_role_display }}</dd>
+      <dt>Last login</dt>
+      <dd>{{ request.user.last_successful_login_at|default:"Never" }}</dd>
+    </dl>
+
+    <section class="panel" aria-labelledby="account-settings-heading">
+      <h2 id="account-settings-heading">Account settings</h2>
+
+      <form method="post" class="field-with-action">
+        {% csrf_token %}
+        <input type="hidden" name="account_action" value="display_name">
+        <label for="{{ display_name_form.display_name.id_for_label }}">Display name</label>
+        {{ display_name_form.display_name }}
+        {% if display_name_form.display_name.errors or display_name_form.display_name.help_text %}
+          <div class="field-with-action__notes">
+            {% if display_name_form.display_name.errors %}
+              <div class="form-field">{{ display_name_form.display_name.errors }}</div>
+            {% endif %}
+            {% if display_name_form.display_name.help_text %}
+              <p class="help-text" id="{{ display_name_form.display_name.auto_id }}_helptext">{{ display_name_form.display_name.help_text }}</p>
+            {% endif %}
+          </div>
+        {% endif %}
+        <button type="submit">Save display name</button>
+      </form>
+
+      <form method="post" class="field-with-action">
+        {% csrf_token %}
+        <input type="hidden" name="account_action" value="email">
+        <label for="{{ email_form.email.id_for_label }}">Email</label>
+        {{ email_form.email }}
+        {% if email_form.email.errors %}
+          <div class="field-with-action__notes">
+            <div class="form-field">{{ email_form.email.errors }}</div>
+          </div>
+        {% endif %}
+        <button type="submit">Save email</button>
+      </form>
+    </section>
+
+    <section class="panel panel--password" aria-labelledby="account-password-heading">
+      <h2 id="account-password-heading">Change password</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="account_action" value="password">
+        {% for field in form %}
+          {% include "accounts/_form_field.html" with hide_visible_errors=True %}
+        {% endfor %}
+        <button type="submit">Change password</button>
+      </form>
+    </section>
+
+    <section class="panel" aria-labelledby="account-library-backup-heading">
+      <h2 id="account-library-backup-heading">Library backup</h2>
+      <p class="help-text">Create and download a ZIP backup of your notes, folders, and tags. For Restore, you can preview the statistical differences between your current library and a backup file you select, then choose whether to restore that backup.</p>
+      <p class="button-row library-backup-actions">
+        <a class="button-link button-link--secondary" href="{% url 'notes:library_backup_download' %}">Download library backup</a>
+        <a class="button-link button-link--secondary" href="{% url 'notes:library_backup_restore_preview' %}">Restore previous library backup</a>
+      </p>
+    </section>
+  </div>
+{% endblock %}

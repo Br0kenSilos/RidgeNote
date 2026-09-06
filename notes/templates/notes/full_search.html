@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Full Search - RidgeNote{% endblock %}
+
+{% block content %}
+  <div class="full-search-page">
+    <h1>Full Search</h1>
+
+    <form method="get" action="{% url 'notes:full_search' %}" class="full-search-form" data-full-search-form>
+      <div class="full-search-form__text-row">
+        <label for="full-search-q" class="visually-hidden">Search text</label>
+        <input type="text"
+               id="full-search-q"
+               name="q"
+               value="{{ state.q }}"
+               placeholder="Search your notes…"
+               autocomplete="off">
+        <button type="submit">Search</button>
+      </div>
+
+      <div class="full-search-form__filters">
+        <div class="full-search-form__row">
+          <fieldset class="full-search-form__tags full-search-form__field" data-full-search-tag-picker>
+            <legend class="visually-hidden">Tags</legend>
+            {% if tags %}
+              <label for="full-search-tag-filter">Tags</label>
+              <div class="full-search-form__tag-combobox" data-full-search-tag-combobox>
+                <input type="text"
+                       id="full-search-tag-filter"
+                       placeholder="Filter/select tags…"
+                       autocomplete="off"
+                       aria-expanded="false"
+                       aria-controls="full-search-tag-panel"
+                       data-full-search-tag-filter
+                       hidden>
+                <div class="full-search-form__tag-panel"
+                     id="full-search-tag-panel"
+                     data-full-search-tag-panel>
+                  <div class="full-search-form__tag-list" data-full-search-tag-list>
+                    {% for tag in tags %}
+                      <label class="full-search-form__tag-option" data-full-search-tag-name="{{ tag.name }}">
+                        <input type="checkbox"
+                               name="tag"
+                               value="{{ tag.id }}"
+                               {% if tag.id in state.tag_ids %}checked{% endif %}
+                               data-full-search-tag-checkbox>
+                        <span class="note-list__tag-chip" data-tag-color="{{ tag.color }}"><span class="note-list__tag-chip__label">{{ tag.name }}</span></span>
+                      </label>
+                    {% endfor %}
+                  </div>
+                  <p class="full-search-form__tag-limit-note" data-full-search-tag-limit-note hidden>You can select at most {{ max_full_search_tags }} tags.</p>
+                </div>
+              </div>
+              <div class="full-search-form__tag-chips" data-full-search-tag-chips aria-live="polite"></div>
+            {% else %}
+              <p class="muted">You don't have any tags yet.</p>
+            {% endif %}
+          </fieldset>
+
+          <div class="full-search-form__field">
+            <label for="full-search-tag-mode">Match</label>
+            <select id="full-search-tag-mode" name="tag_mode" data-full-search-tag-mode>
+              {% for value, label in tag_mode_choices %}
+                <option value="{{ value }}"{% if value == state.tag_mode %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="full-search-form__field">
+            <label for="full-search-tag-status">Tag status</label>
+            <select id="full-search-tag-status" name="tag_status" data-full-search-tag-status>
+              {% for value, label in tag_status_choices %}
+                <option value="{{ value }}"{% if value == state.tag_status %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="full-search-form__row">
+          <div class="full-search-form__field">
+            <label for="full-search-folder">Folder</label>
+            <select id="full-search-folder" name="folder">
+              <option value="">All folders</option>
+              <option value="{{ full_search_unfiled_value }}"{% if state.folder_is_unfiled %} selected{% endif %}>Unfiled</option>
+              {% for folder in folders %}
+                <option value="{{ folder.id }}"{% if folder.id == state.folder_id %} selected{% endif %}>{{ folder.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="full-search-form__field">
+            <label for="full-search-search-in">Search in</label>
+            <select id="full-search-search-in" name="search_in">
+              {% for value, label in search_in_choices %}
+                <option value="{{ value }}"{% if value == state.search_in %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="full-search-form__field full-search-form__field--checkbox">
+            <label for="full-search-include-trash">
+              <input type="checkbox"
+                     id="full-search-include-trash"
+                     name="include_trash"
+                     value="1"
+                     {% if state.include_trash %}checked{% endif %}>
+              Include Trash
+            </label>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    {% if active_filters %}
+      <div class="full-search-active-filters" aria-label="Active filters">
+        {% for filter in active_filters %}
+          <a class="full-search-active-filters__chip" href="{{ filter.remove_url }}">{{ filter.label }} <span aria-hidden="true">&times;</span></a>
+        {% endfor %}
+        <a class="full-search-active-filters__clear" href="{{ clear_all_url }}">Clear all</a>
+      </div>
+    {% endif %}
+
+    {% if validation_error %}
+      <div class="full-search-validation" role="alert">{{ validation_error }}</div>
+    {% elif idle_message %}
+      <p class="muted full-search-idle">{{ idle_message }}</p>
+    {% elif results %}
+      <ul class="note-list full-search-results">
+        {% for result in results %}
+          {% include "notes/_full_search_row.html" with note=result.note title_segments=result.title_segments body_segments=result.body_segments %}
+        {% endfor %}
+      </ul>
+      {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="all-notes-pagination" aria-label="Pagination">
+          {% if prev_page_url %}
+            <a class="all-notes-pagination__link" href="{{ prev_page_url }}">Previous</a>
+          {% else %}
+            <span class="all-notes-pagination__disabled">Previous</span>
+          {% endif %}
+          <span class="all-notes-pagination__status">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+          {% if next_page_url %}
+            <a class="all-notes-pagination__link" href="{{ next_page_url }}">Next</a>
+          {% else %}
+            <span class="all-notes-pagination__disabled">Next</span>
+          {% endif %}
+        </nav>
+      {% endif %}
+    {% else %}
+      <div class="empty-state empty-state--compact">
+        <h2>No matching notes</h2>
+        <p>Try different search text, or adjust your tag, folder, or Trash filters.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  {% include "notes/_nav_drawer.html" %}
+{% endblock %}

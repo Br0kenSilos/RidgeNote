@@ -1,0 +1,216 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <div class="tag-management-page">
+    <h1>Tag manager</h1>
+    <p>Rename, recolor, or delete tags used across your notes.</p>
+    <p class="muted">To change tags on one note, use that note's Tags section.</p>
+
+    <form method="get"
+          class="tag-management__toolbar"
+          role="search"
+          data-tag-filter-form>
+      <button type="button"
+              class="button-link"
+              data-tag-inline-edit-trigger
+              data-tag-inline-edit-target="tag-new-editor">+ New tag</button>
+      <label for="tag-management-q" class="visually-hidden">Filter tags by name</label>
+      <input type="text"
+             id="tag-management-q"
+             name="q"
+             value="{{ query }}"
+             placeholder="Filter tags…"
+             data-tag-filter-input>
+      <label for="tag-management-sort" class="visually-hidden">Sort tags</label>
+      <select id="tag-management-sort" name="sort" data-tag-sort-select>
+        <option value="name_asc"{% if sort == "name_asc" %} selected{% endif %}>Name A-Z</option>
+        <option value="name_desc"{% if sort == "name_desc" %} selected{% endif %}>Name Z-A</option>
+        <option value="usage_asc"{% if sort == "usage_asc" %} selected{% endif %}>Usage low-high</option>
+        <option value="usage_desc"{% if sort == "usage_desc" %} selected{% endif %}>Usage high-low</option>
+      </select>
+      <button type="submit" class="button-link" data-tag-filter-submit>Filter</button>
+      {% if query %}
+        <a href="{% url 'accounts:tag_management' %}?sort={{ sort }}" class="tag-management__clear-link">Clear</a>
+      {% endif %}
+    </form>
+
+    <div id="tag-new-editor"
+         class="tag-management__new-tag-editor"
+         data-tag-inline-editor
+         data-tag-new-editor
+         data-tag-semantic-enabled="{{ request.user.tag_semantic_color_enabled|yesno:'true,false' }}"
+         data-tag-default-color="{{ request.user.tag_default_color }}"
+         hidden>
+      <form method="post" action="{% url 'accounts:tag_create' %}" class="tag-management__inline-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <label for="tag-new-name" class="visually-hidden">Tag name</label>
+        <input type="text"
+               id="tag-new-name"
+               name="name"
+               maxlength="100"
+               placeholder="Name"
+               autocomplete="off"
+               {% if request.user.tag_uppercase_enabled %}data-tag-name-input{% endif %}>
+        <p class="tag-management__inline-form-length-warning"
+           id="note-tag-length-warning"
+           role="alert"
+           data-tag-name-length-warning
+           hidden></p>
+        <label for="tag-new-color" class="visually-hidden">Tag color</label>
+        <select id="tag-new-color" name="color" data-tag-new-color-select>
+          <option value="">Default color</option>
+          {% for value, label in tag_color_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+        <span class="tag-management__inline-form-preview">
+          <span class="visually-hidden">Preview:</span>
+          <span class="tag-management__color-pill" data-tag-color-preview data-tag-color="{{ request.user.tag_default_color }}">{{ default_color_label }}</span>
+        </span>
+        <button type="submit" class="button-link">Add tag</button>
+        <button type="button" class="button-link button-link--secondary" data-tag-inline-edit-cancel>Cancel</button>
+      </form>
+    </div>
+
+    <form id="tag-bulk-select-form"
+          method="post"
+          action="{% url 'accounts:tag_bulk_delete' %}"
+          data-tag-bulk-form>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ current_path }}">
+    </form>
+
+    <div class="tag-management__bulk-bar" data-tag-bulk-bar>
+      <label>
+        <input type="checkbox" data-tag-select-all aria-label="Select all visible tags">
+        Select all
+      </label>
+      <span data-tag-selected-count aria-live="polite">0 selected</span>
+      <button type="button"
+              class="button-link button-link--danger"
+              data-tag-bulk-delete-trigger
+              data-tag-delete-kind="bulk"
+              disabled>Delete selected</button>
+    </div>
+
+    {% if tags %}
+      <table class="tag-management__table">
+        <caption class="visually-hidden">Your tags</caption>
+        <colgroup>
+          <col class="tag-management__col--select">
+          <col class="tag-management__col--name">
+          <col class="tag-management__col--color">
+          <col class="tag-management__col--usage">
+          <col class="tag-management__col--menu">
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col"><span class="visually-hidden">Select</span></th>
+            <th scope="col">Name</th>
+            <th scope="col">Color</th>
+            <th scope="col" class="tag-management__cell--usage">Usage count</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tag in tags %}
+            <tr class="tag-management__row" data-tag-row data-tag-note-ids="{{ tag.note_ids_csv }}" data-tag-usage-count="{{ tag.usage_count }}">
+              <td class="tag-management__cell tag-management__cell--select">
+                <input type="checkbox"
+                       form="tag-bulk-select-form"
+                       name="tag_ids"
+                       value="{{ tag.id }}"
+                       data-tag-select
+                       aria-label="Select {{ tag.name }}">
+              </td>
+              <td class="tag-management__cell tag-management__cell--name" title="{{ tag.name }}">{{ tag.name }}</td>
+              <td class="tag-management__cell tag-management__cell--color">
+                <span class="tag-management__color-pill" data-tag-color="{{ tag.color }}">{{ tag.color_label }}</span>
+              </td>
+              <td class="tag-management__cell tag-management__cell--usage">
+                <span class="tag-management__usage-wide">{{ tag.usage_count }}</span>
+                <span class="tag-management__usage-narrow">{{ tag.usage_label }}</span>
+              </td>
+              <td class="tag-management__cell tag-management__cell--menu">
+                <details class="row-action-menu tag-management__row-menu">
+                  <summary class="tree-nav__row-menu-trigger icon-button" aria-label="Actions for {{ tag.name }}">{% include "core/icons/menu-dots.svg" %}</summary>
+                  <div class="tree-nav__row-menu-panel">
+                    <button type="button"
+                            class="tree-nav__row-menu-item"
+                            data-tag-inline-edit-trigger
+                            data-tag-inline-edit-target="tag-rename-row-{{ tag.id }}">Rename</button>
+                    <button type="button"
+                            class="tree-nav__row-menu-item"
+                            data-tag-inline-edit-trigger
+                            data-tag-inline-edit-target="tag-recolor-row-{{ tag.id }}">Recolor</button>
+                    <form method="post" action="{% url 'accounts:tag_delete' tag.id %}" id="tag-delete-form-{{ tag.id }}">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ current_path }}">
+                    </form>
+                    <button type="button"
+                            class="tree-nav__row-menu-item tree-nav__row-menu-item--danger"
+                            data-tag-delete-trigger
+                            data-tag-delete-kind="single"
+                            data-tag-delete-name="{{ tag.name }}"
+                            data-tag-delete-consequence="{{ tag.delete_consequence }}"
+                            data-tag-delete-form-id="tag-delete-form-{{ tag.id }}">Delete</button>
+                  </div>
+                </details>
+              </td>
+            </tr>
+            <tr class="tag-management__editor-row" id="tag-rename-row-{{ tag.id }}" data-tag-inline-editor hidden>
+              <td colspan="5">
+                <form method="post" action="{% url 'accounts:tag_rename' tag.id %}" class="tag-management__inline-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ current_path }}">
+                  <label for="tag-rename-{{ tag.id }}" class="visually-hidden">Rename {{ tag.name }}</label>
+                  <input type="text" id="tag-rename-{{ tag.id }}" name="name" maxlength="100" value="{{ tag.name }}">
+                  <button type="submit" class="button-link">Save</button>
+                  <button type="button" class="button-link button-link--secondary" data-tag-inline-edit-cancel>Cancel</button>
+                  <span class="tag-management__inline-form-warning">Renaming changes this tag everywhere it is used.</span>
+                </form>
+              </td>
+            </tr>
+            <tr class="tag-management__editor-row" id="tag-recolor-row-{{ tag.id }}" data-tag-inline-editor hidden>
+              <td colspan="5">
+                <form method="post" action="{% url 'accounts:tag_recolor' tag.id %}" class="tag-management__inline-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ current_path }}">
+                  <label for="tag-recolor-{{ tag.id }}" class="visually-hidden">Recolor {{ tag.name }}</label>
+                  <select id="tag-recolor-{{ tag.id }}" name="color">
+                    {% for value, label in tag_color_choices %}
+                      <option value="{{ value }}"{% if value == tag.color %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="button-link">Save</button>
+                  <button type="button" class="button-link button-link--secondary" data-tag-inline-edit-cancel>Cancel</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="tag-management__empty">
+        {% if query %}No tags match "{{ query }}".{% else %}You have no tags yet.{% endif %}
+      </p>
+    {% endif %}
+
+    <dialog id="tag-delete-confirm-dialog"
+            class="tag-delete-confirm-dialog"
+            aria-labelledby="tag-delete-confirm-dialog-title"
+            data-tag-delete-confirm-dialog>
+      <h2 id="tag-delete-confirm-dialog-title" data-tag-delete-confirm-title>Delete tag?</h2>
+      <p data-tag-delete-confirm-consequence></p>
+      <div class="tag-delete-confirm-dialog__actions">
+        <button type="button"
+                class="button-link button-link--secondary"
+                data-tag-delete-confirm-cancel>Cancel</button>
+        <button type="submit"
+                class="button-link button-link--danger"
+                data-tag-delete-confirm-submit>Delete</button>
+      </div>
+    </dialog>
+  </div>
+{% endblock %}

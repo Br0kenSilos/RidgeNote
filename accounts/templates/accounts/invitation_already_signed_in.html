@@ -1,0 +1,10 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <h1>Already Signed In</h1>
+  <p>You are currently signed in as {{ display_label }}. Sign out, then reopen this invitation link.</p>
+  <form class="logout-form" method="post" action="{% url 'accounts:logout' %}">
+    {% csrf_token %}
+    <button type="submit">Sign Out</button>
+  </form>
+{% endblock %}

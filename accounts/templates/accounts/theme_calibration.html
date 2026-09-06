@@ -1,0 +1,378 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <div class="theme-calibration-page">
+    <h1>Theme Calibration</h1>
+    <p class="muted">
+      Internal reference for reviewing production color tokens across
+      themes. Not an end-user feature -- administrator-only, not linked
+      from primary navigation. Use the top-bar Appearance selector to
+      switch between warm-light and dark while reviewing this page.
+    </p>
+
+    <section class="palette-lab" aria-labelledby="palette-lab-heading" data-palette-lab-root>
+      <h2 id="palette-lab-heading">Palette Lab</h2>
+      <p class="theme-calibration__note">
+        Internal design/calibration tool only -- these are candidate
+        palettes, not real themes. Selecting a candidate updates only
+        the preview below; it never changes your own saved Appearance
+        preference, never touches <code>User.theme</code>, and never
+        affects any other page. Candidates are grouped by which future
+        V1 theme category they are being evaluated for.
+      </p>
+
+      {% regroup palette_lab_candidates by category_label as candidate_groups %}
+
+      <div class="palette-lab__controls">
+        <div class="palette-lab__candidate-select">
+          <label for="palette-lab-candidate">Candidate</label>
+          <select id="palette-lab-candidate" data-palette-lab-select>
+            {% for group in candidate_groups %}
+              <optgroup label="{{ group.grouper }}">
+                {% for candidate in group.list %}
+                  {% if candidate.approved_name %}
+                    <option value="{{ candidate.id }}">{{ candidate.approved_name }} ({{ candidate.id }}) -- Selected for V1</option>
+                  {% else %}
+                    <option value="{{ candidate.id }}">{{ candidate.label }} -- {{ candidate.description }}</option>
+                  {% endif %}
+                {% endfor %}
+              </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="palette-lab__swatch-strip" data-palette-lab-swatch-strip>
+        {% for group in candidate_groups %}
+          <div class="palette-lab__swatch-group">
+            <span class="theme-calibration__label">{{ group.grouper }}</span>
+            <div class="palette-lab__swatch-row">
+              {% for candidate in group.list %}
+                <button type="button" class="palette-lab-scope palette-lab__swatch-card{% if candidate.selected_for_production %} palette-lab__swatch-card--selected{% endif %}" data-palette-candidate="{{ candidate.id }}" data-palette-lab-swatch="{{ candidate.id }}" aria-pressed="false">
+                  {% if candidate.approved_name %}
+                    <span class="palette-lab__swatch-card-badge">Selected for V1</span>
+                    <span class="palette-lab__swatch-card-label">{{ candidate.approved_name }}</span>
+                    <span class="palette-lab__swatch-card-desc">{{ candidate.id }} -- {{ candidate.description }}</span>
+                  {% else %}
+                    <span class="palette-lab__swatch-card-label">{{ candidate.label }}</span>
+                    <span class="palette-lab__swatch-card-desc">{{ candidate.description }}</span>
+                  {% endif %}
+                  <span class="palette-lab__swatch-dots">
+                    <span class="palette-lab__swatch-dot palette-lab__swatch-dot--bg" title="App background"></span>
+                    <span class="palette-lab__swatch-dot palette-lab__swatch-dot--surface" title="Panel surface"></span>
+                    <span class="palette-lab__swatch-dot palette-lab__swatch-dot--shell" title="Shell/header"></span>
+                    <span class="palette-lab__swatch-dot palette-lab__swatch-dot--primary" title="Primary"></span>
+                    <span class="palette-lab__swatch-dot palette-lab__swatch-dot--text" title="Text"></span>
+                    <span class="palette-lab__swatch-dot palette-lab__swatch-dot--link" title="Accent/link"></span>
+                    <span class="palette-lab__swatch-dot palette-lab__swatch-dot--success" title="Success"></span>
+                    <span class="palette-lab__swatch-dot palette-lab__swatch-dot--danger" title="Danger"></span>
+                  </span>
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="palette-lab-scope palette-lab-preview" data-palette-lab-preview data-palette-candidate="{{ palette_lab_candidates.0.id }}">
+        <div class="palette-lab-preview__shell">RidgeNote</div>
+        <div class="palette-lab-preview__grid">
+          <div class="palette-lab-preview__card">
+            <span class="theme-calibration__label">Surfaces &amp; text</span>
+            <div class="panel palette-lab-preview__surface">
+              <p class="palette-lab-preview__text-strong">Strong text</p>
+              <p class="palette-lab-preview__text-body">Body text for ordinary reading.</p>
+              <p class="palette-lab-preview__text-muted">Muted text</p>
+            </div>
+          </div>
+
+          <div class="palette-lab-preview__card">
+            <span class="theme-calibration__label">Buttons &amp; links</span>
+            <div class="theme-calibration__grid">
+              <button type="button" class="button-link">Primary</button>
+              <button type="button" class="button-link button-link--secondary">Secondary</button>
+              <button type="button" class="button-link button-link--danger">Danger</button>
+            </div>
+            <p>
+              <a href="#palette-lab-heading">Sample link</a>
+            </p>
+          </div>
+
+          <div class="palette-lab-preview__card">
+            <span class="theme-calibration__label">Form controls</span>
+            <div class="form-field">
+              <label for="palette-lab-text-input">Normal input</label>
+              <input type="text" id="palette-lab-text-input" placeholder="Sample value">
+            </div>
+            <div class="form-field">
+              <label for="palette-lab-disabled-input">Disabled input</label>
+              <input type="text" id="palette-lab-disabled-input" value="Disabled" disabled>
+            </div>
+            <div class="form-field">
+              <label for="palette-lab-invalid-input">Invalid input</label>
+              <input type="text" id="palette-lab-invalid-input" value="Bad value" aria-invalid="true">
+              <ul class="errorlist"><li>This field is required.</li></ul>
+            </div>
+            <div class="form-field">
+              <label for="palette-lab-select-sample">Select</label>
+              <select id="palette-lab-select-sample">
+                <option>Option A</option>
+                <option>Option B</option>
+              </select>
+            </div>
+            <div class="form-field form-field--checkbox">
+              <div class="checkbox-control">
+                <input type="checkbox" id="palette-lab-checkbox" checked>
+                <label for="palette-lab-checkbox">Sample checkbox</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="palette-lab-preview__card">
+            <span class="theme-calibration__label">Note rows</span>
+            <div class="note-list__row palette-lab-preview__row">Normal row</div>
+            <div class="note-list__row palette-lab-preview__row tree-nav__row--current">Selected row</div>
+            <div class="note-list__row palette-lab-preview__row">
+              <span class="note-list__pin-badge">Pinned</span> Pinned row
+            </div>
+          </div>
+
+          <div class="palette-lab-preview__card">
+            <span class="theme-calibration__label">Dialog / modal surface</span>
+            <div class="palette-lab-preview__dialog">
+              <h3>Sample dialog</h3>
+              <p>Representative modal surface, border, and shadow.</p>
+              <button type="button" class="button-link button-link--secondary">Cancel</button>
+              <button type="button" class="button-link">Confirm</button>
+            </div>
+          </div>
+
+          <div class="palette-lab-preview__card">
+            <span class="theme-calibration__label">Borders &amp; dividers</span>
+            <div class="palette-lab-preview__bordered">Bordered box</div>
+            <hr class="palette-lab-preview__divider">
+            <div class="palette-lab-preview__bordered palette-lab-preview__bordered--strong">Attention border</div>
+          </div>
+
+          <div class="palette-lab-preview__card">
+            <span class="theme-calibration__label">Editor controls</span>
+            <div class="editor-toolbar">
+              <button type="button">H1</button>
+              <button type="button">H2</button>
+              <button type="button">Clear</button>
+            </div>
+            <p class="note-workspace__save-status" data-tone="green" data-status-kind="saved">Saved</p>
+          </div>
+
+          <div class="palette-lab-preview__card">
+            <span class="theme-calibration__label">Status families</span>
+            <ul class="messages theme-calibration__status-list">
+              <li class="messages__item">Info</li>
+              <li class="messages__item messages__item--success">Success</li>
+              <li class="messages__item messages__item--warning">Warning</li>
+              <li class="messages__item messages__item--error">Danger</li>
+            </ul>
+          </div>
+
+          <div class="palette-lab-preview__card">
+            <span class="theme-calibration__label">Tag colors</span>
+            <div class="theme-calibration__grid">
+              {% for value, label in tag_color_choices %}
+                <span class="note-list__tag-chip" data-tag-color="{{ value }}">
+                  <span class="note-list__tag-chip__label">{{ label }}</span>
+                </span>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="palette-lab-shell-compare" data-palette-lab-shell-compare>
+        <h3 class="theme-calibration__subheading">Shell foreground -- design history (Blue Dusk / Midnight Ridge / Nightfall)</h3>
+        <p class="theme-calibration__note">
+          Decision made: the light-foreground treatment below is
+          <strong>approved</strong> and is now what the main preview
+          above shows for these three candidates by default -- no need
+          to scroll down here to see the intended result. This section
+          remains only as a compact historical record of the rejected
+          alternative that motivated the decision. Neither row changes
+          the candidate's real tokens or shell background.
+        </p>
+        {% for candidate_id, candidate_label in palette_lab_shell_compare_candidates %}
+          <div class="palette-lab-shell-compare__group">
+            <span class="palette-lab-shell-compare__group-label">{{ candidate_label }} ({{ candidate_id }})</span>
+
+            <div class="palette-lab-shell-compare__treatment">
+              <span class="palette-lab-shell-compare__row-tag palette-lab-shell-compare__row-tag--rejected">Rejected current fallback -- dark foreground</span>
+              <div class="palette-lab-scope palette-lab-shell-row palette-lab-shell-row--current" data-palette-candidate="{{ candidate_id }}">
+                <a class="palette-lab-shell-row__link" href="#">Home</a>
+                <span class="palette-lab-shell-row__brand">RidgeNote</span>
+                <span class="palette-lab-shell-row__spacer"></span>
+                <a class="palette-lab-shell-row__link" href="#">example-user</a>
+                <span class="palette-lab-shell-row__icon" title="Appearance">{% include "core/icons/contrast.svg" %}</span>
+                <span class="palette-lab-shell-row__control">Search</span>
+                <span class="palette-lab-shell-row__control">Help</span>
+              </div>
+            </div>
+
+            <div class="palette-lab-shell-compare__treatment">
+              <span class="palette-lab-shell-compare__row-tag palette-lab-shell-compare__row-tag--selected">Selected / approved direction -- light foreground</span>
+              <div class="palette-lab-scope palette-lab-shell-row palette-lab-shell-row--light" data-palette-candidate="{{ candidate_id }}">
+                <a class="palette-lab-shell-row__link" href="#">Home</a>
+                <span class="palette-lab-shell-row__brand">RidgeNote</span>
+                <span class="palette-lab-shell-row__spacer"></span>
+                <a class="palette-lab-shell-row__link" href="#">example-user</a>
+                <span class="palette-lab-shell-row__icon" title="Appearance">{% include "core/icons/contrast.svg" %}</span>
+                <span class="palette-lab-shell-row__control">Search</span>
+                <span class="palette-lab-shell-row__control">Help</span>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="theme-calibration__section" aria-labelledby="calibration-tags-heading">
+      <h2 id="calibration-tags-heading">Tag palette (production styling)</h2>
+      <div class="theme-calibration__grid">
+        {% for value, label in tag_color_choices %}
+          <div class="theme-calibration__item">
+            <span class="note-list__tag-chip" data-tag-color="{{ value }}">
+              <span class="note-list__tag-chip__label">{{ label }}</span>
+            </span>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="theme-calibration__section" aria-labelledby="calibration-buttons-heading">
+      <h2 id="calibration-buttons-heading">Buttons</h2>
+      <div class="theme-calibration__grid">
+        <button type="button" class="button-link">Primary</button>
+        <button type="button" class="button-link button-link--secondary">Secondary</button>
+        <button type="button" class="button-link button-link--danger">Danger</button>
+      </div>
+    </section>
+
+    <section class="theme-calibration__section" aria-labelledby="calibration-links-heading">
+      <h2 id="calibration-links-heading">Links</h2>
+      <p>
+        <a href="#calibration-links-heading">Sample link -- hover or tab to it to check the shared link/focus treatment</a>
+      </p>
+    </section>
+
+    <section class="theme-calibration__section" aria-labelledby="calibration-forms-heading">
+      <h2 id="calibration-forms-heading">Form controls</h2>
+      <div class="theme-calibration__grid">
+        <div class="form-field">
+          <label for="calibration-text-input">Text input</label>
+          <input type="text" id="calibration-text-input" placeholder="Sample value">
+        </div>
+        <div class="form-field">
+          <label for="calibration-select">Select</label>
+          <select id="calibration-select">
+            <option>Option A</option>
+            <option>Option B</option>
+          </select>
+        </div>
+        <div class="form-field form-field--checkbox">
+          <div class="checkbox-control">
+            <input type="checkbox" id="calibration-checkbox">
+            <label for="calibration-checkbox">Sample checkbox</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="theme-calibration__section" aria-labelledby="calibration-surfaces-heading">
+      <h2 id="calibration-surfaces-heading">Surfaces</h2>
+      <div class="theme-calibration__grid">
+        <div class="panel theme-calibration__surface-sample">Panel surface</div>
+        <div class="theme-calibration__muted-surface">Muted surface</div>
+      </div>
+      <table class="theme-calibration__table-sample">
+        <thead>
+          <tr>
+            <th scope="col">Header</th>
+            <th scope="col">Header</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Row</td>
+            <td>Row</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="theme-calibration__section" aria-labelledby="calibration-status-heading">
+      <h2 id="calibration-status-heading">Status families</h2>
+      <ul class="messages theme-calibration__status-list">
+        <li class="messages__item">Info</li>
+        <li class="messages__item messages__item--success">Success</li>
+        <li class="messages__item messages__item--warning">Warning</li>
+        <li class="messages__item messages__item--error">Danger</li>
+      </ul>
+    </section>
+
+    <section class="theme-calibration__section" aria-labelledby="calibration-attention-heading">
+      <h2 id="calibration-attention-heading">Attention-row example</h2>
+      <p class="theme-calibration__note">
+        Same danger-family tint and left accent as the User List
+        attention-row treatment (Disabled / locked / pending deletion).
+      </p>
+      <div class="theme-calibration__attention-row">Sample attention row</div>
+    </section>
+
+    <section class="theme-calibration__section" aria-labelledby="calibration-focus-heading">
+      <h2 id="calibration-focus-heading">Focus example</h2>
+      <button type="button" class="button-link button-link--secondary">Tab to me to check the shared focus ring</button>
+    </section>
+
+    <section class="theme-calibration__section" aria-labelledby="calibration-shell-heading">
+      <h2 id="calibration-shell-heading">Shell Candidate Reference</h2>
+      <p class="theme-calibration__note">
+        Reference only. The application top bar and collapse rail
+        intentionally share one resting-color token
+        (`--color-bg-shell`) within each theme -- Rail B's rest color
+        in warm-light, Rail C's rest color in dark -- applied
+        consistently across every authenticated page (Home, note
+        workspace, Account, Preferences, User List, this page). The
+        Top Bar T1/T2/T3 swatches below are retained only as
+        historical reference points; none of them reflects the
+        current production formula.
+      </p>
+
+      <h3 class="theme-calibration__subheading">Collapse rail</h3>
+      <div class="theme-calibration__grid">
+        <div class="theme-calibration__item">
+          <span class="theme-calibration__label">Rail B (live in warm-light)</span>
+          <div class="theme-calibration__swatch theme-calibration__swatch--rail-b-rest">Rest</div>
+          <div class="theme-calibration__swatch theme-calibration__swatch--rail-b-hover">Hover</div>
+        </div>
+        <div class="theme-calibration__item">
+          <span class="theme-calibration__label">Rail C (live in dark)</span>
+          <div class="theme-calibration__swatch theme-calibration__swatch--rail-c-rest">Rest</div>
+          <div class="theme-calibration__swatch theme-calibration__swatch--rail-c-hover">Hover</div>
+        </div>
+      </div>
+
+      <h3 class="theme-calibration__subheading">Top bar</h3>
+      <div class="theme-calibration__grid">
+        <div class="theme-calibration__item">
+          <span class="theme-calibration__label">Top Bar T1</span>
+          <div class="theme-calibration__swatch theme-calibration__swatch--topbar-t1">T1</div>
+        </div>
+        <div class="theme-calibration__item">
+          <span class="theme-calibration__label">Top Bar T2 (live: warm-light 55/45, dark 70/30)</span>
+          <div class="theme-calibration__swatch theme-calibration__swatch--topbar-t2">T2</div>
+        </div>
+        <div class="theme-calibration__item">
+          <span class="theme-calibration__label">Top Bar T3</span>
+          <div class="theme-calibration__swatch theme-calibration__swatch--topbar-t3">T3</div>
+        </div>
+      </div>
+    </section>
+  </div>
+{% endblock %}

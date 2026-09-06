@@ -1,0 +1,149 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+<div class="user-detail-page">
+  <h1>{{ target.display_label }}</h1>
+  <dl>
+    <dt>Username</dt>
+    <dd>{{ target.username }}</dd>
+    <dt>Email</dt>
+    <dd>{{ target.email|default:"Not set" }}</dd>
+    <dt>Role</dt>
+    <dd>{{ target.role }}</dd>
+    <dt>Status</dt>
+    <dd>
+      {% if deletion_status.is_pending %}
+        {% if deletion_status.is_purge_eligible %}
+          Pending deletion — eligible for permanent purge
+        {% else %}
+          Pending deletion — recoverable until {{ deletion_status.recovery_deadline }}
+        {% endif %}
+      {% else %}
+        {{ target.account_status_label }}{% if target.account_status_detail %} · {{ target.account_status_detail }}{% endif %}
+      {% endif %}
+    </dd>
+    {% if deletion_status.is_pending %}
+      <dt>Deletion scheduled</dt>
+      <dd>{{ deletion_status.scheduled_at }}</dd>
+      <dt>Recovery deadline</dt>
+      <dd>{{ deletion_status.recovery_deadline }}</dd>
+      <dt>If cancelled</dt>
+      <dd>
+        {% if deletion_status.restore_is_active %}
+          Cancelling will restore this account to Active.
+        {% else %}
+          Cancelling will restore this account to Disabled because it was already disabled
+          before deletion was scheduled.
+        {% endif %}
+      </dd>
+    {% endif %}
+    {% if target.has_completed_setup %}
+      <dt>Password change required</dt>
+      <dd>{% if target.must_change_password %}Yes{% else %}No{% endif %}</dd>
+    {% endif %}
+  </dl>
+
+  {% if not target.has_completed_setup %}
+    <section class="panel panel--invitation" aria-labelledby="invitation-heading">
+      <h2 id="invitation-heading">Invitation</h2>
+
+      {% if new_invitation_url %}
+        <div class="form-field">
+          <label for="id_new_invitation_url">New invitation link</label>
+          <div class="inline-form">
+            <input type="text" id="id_new_invitation_url" value="{{ new_invitation_url }}" readonly data-copy-invitation-source>
+            <button type="button" data-copy-invitation-trigger data-copy-target="id_new_invitation_url">Copy</button>
+          </div>
+          <p class="help-text">Copy this link now — it cannot be shown again. If it's lost, reissue the invitation.</p>
+        </div>
+      {% endif %}
+
+      <p class="invitation-meta">
+        {% if latest_invitation is None %}
+          Not issued
+        {% elif latest_invitation.revoked_at %}
+          <span class="invitation-meta__item">Issued {{ latest_invitation.created_at }}</span><span class="invitation-meta__sep"> · </span><span class="invitation-meta__item">Revoked {{ latest_invitation.revoked_at }}</span>
+        {% elif not latest_invitation.is_valid %}
+          <span class="invitation-meta__item">Issued {{ latest_invitation.created_at }}</span><span class="invitation-meta__sep"> · </span><span class="invitation-meta__item">Expired {{ latest_invitation.expires_at }}</span>
+        {% else %}
+          <span class="invitation-meta__item">Issued {{ latest_invitation.created_at }}</span><span class="invitation-meta__sep"> · </span><span class="invitation-meta__item">Expires {{ latest_invitation.expires_at }}</span>
+        {% endif %}
+      </p>
+
+      {% if not target.is_active %}
+        <p>This account is disabled; the recipient cannot complete setup until it is re-enabled, even if the invitation link above is still valid. Disabling never revokes an invitation.</p>
+      {% endif %}
+
+      <p class="button-row">
+        <a class="button-link" href="{% url 'accounts:user_invitation_reissue' target.id %}">
+          {% if latest_invitation %}Reissue invitation{% else %}Issue invitation{% endif %}
+        </a>
+        {% if latest_invitation and latest_invitation.is_valid %}
+          <a class="button-link button-link--secondary" href="{% url 'accounts:user_invitation_revoke' target.id %}">Revoke invitation</a>
+        {% endif %}
+      </p>
+    </section>
+  {% endif %}
+
+  <section class="panel panel--account-settings" aria-labelledby="account-settings-heading">
+    <h2 id="account-settings-heading">Account settings</h2>
+
+    <form method="post" action="{% url 'accounts:user_role' target.id %}" class="field-with-action">
+      {% csrf_token %}
+      <label for="id_role">Role</label>
+      <select id="id_role" name="role">
+        <option value="user" {% if target.role == "user" %}selected{% endif %}>User</option>
+        <option value="admin" {% if target.role == "admin" %}selected{% endif %}>Admin</option>
+      </select>
+      <button type="submit">Update Role</button>
+    </form>
+
+    <form method="post" action="{% url 'accounts:user_active' target.id %}" class="field-with-action">
+      {% csrf_token %}
+      <label for="id_is_active">Enabled</label>
+      <input type="checkbox" id="id_is_active" name="is_active" {% if target.is_active %}checked{% endif %}>
+      <button type="submit">Update Status</button>
+    </form>
+
+    <form method="post" action="{% url 'accounts:user_email' target.id %}" class="field-with-action">
+      {% csrf_token %}
+      <label for="id_email">Email</label>
+      {{ email_form.email }}
+      <button type="submit">Update Email</button>
+      {% if email_form.email.errors %}
+        <div class="form-field">{{ email_form.email.errors }}</div>
+      {% endif %}
+    </form>
+
+    {% if target.has_completed_setup %}
+      <p><a href="{% url 'accounts:user_password_reset' target.id %}">Reset password</a></p>
+    {% endif %}
+  </section>
+
+  <section class="panel panel--account-actions" aria-labelledby="account-actions-heading">
+    <h2 id="account-actions-heading">Account actions</h2>
+
+    {% if deletion_status.is_pending %}
+      <form method="post" action="{% url 'accounts:user_cancel_deletion' target.id %}">
+        {% csrf_token %}
+        <button type="submit">Cancel deletion</button>
+      </form>
+      <p>
+        {% if deletion_status.is_purge_eligible %}
+          {% if request.user.pk == target.pk %}
+            You cannot purge your own account. Another administrator must perform this action.
+          {% else %}
+            <a class="button-link button-link--danger" href="{% url 'accounts:user_purge' target.id %}">Permanently purge</a>
+          {% endif %}
+        {% else %}
+          Permanent purge becomes available on {{ deletion_status.recovery_deadline }}.
+        {% endif %}
+      </p>
+    {% else %}
+      <p><a class="button-link button-link--secondary" href="{% url 'accounts:user_schedule_deletion' target.id %}">Schedule deletion</a></p>
+    {% endif %}
+  </section>
+
+  <p><a href="{% url 'accounts:user_list' %}">Back to users</a></p>
+</div>
+{% endblock %}

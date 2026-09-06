@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+
+{% block title %}{{ note.title }} - RidgeNote{% endblock %}
+{% block main_class %}content-shell content-shell--workspace{% endblock %}
+
+{% block app_header %}
+  <header class="app-header app-header--workspace" data-workspace-header>
+    {% include "core/_drawer_trigger.html" %}
+    <nav class="account-nav account-nav--workspace account-nav--left note-workspace-titlebar"
+         aria-label="Primary navigation">
+      <a class="note-workspace-titlebar__nav-item" href="{% url 'home' %}">Home</a>
+      <form class="inline-form note-workspace-titlebar__nav-item note-workspace-titlebar__quick-trash"
+            method="post"
+            action="{% url 'notes:note_delete' note.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="origin" value="note_detail">
+        <input type="hidden" name="current_note" value="{{ note.id }}">
+        <button type="submit"
+                class="icon-button workspace-header__quick-trash"
+                aria-label="Move current note to Trash"
+                data-tooltip="Move current note to Trash">{% include "core/icons/trash.svg" %}</button>
+      </form>
+      <details class="note-recent-switcher row-action-menu"
+               data-note-recent-switcher
+               data-menu-align="left"
+               data-quick-switch-url="{% url 'notes:quick_switch_search' %}"
+               data-quick-switch-exclude-id="{{ note.id }}">
+        <summary class="icon-button tree-nav__row-menu-trigger note-recent-switcher__trigger"
+                 aria-label="Recent notes"
+                 data-tooltip="Recent notes">{% include "core/icons/history.svg" %}</summary>
+        <div class="tree-nav__row-menu-panel tree-nav__row-menu-panel--align-left note-recent-switcher__panel">
+          <div class="note-recent-switcher__filter">
+            <label class="visually-hidden" for="note-recent-switcher-filter">Filter notes by title or folder</label>
+            <input type="text"
+                   id="note-recent-switcher-filter"
+                   class="note-recent-switcher__filter-input"
+                   data-quick-switch-input
+                   placeholder="Filter by title or folder"
+                   autocomplete="off">
+          </div>
+          <ul class="note-recent-switcher__list" data-quick-switch-results>
+            {% for recent_note in recent_notes %}
+              <li class="note-recent-switcher__item">
+                <a class="note-recent-switcher__link" href="{% url 'notes:detail' recent_note.id %}">{{ recent_note.title }}</a>
+              </li>
+            {% empty %}
+              <li class="note-recent-switcher__empty">No other recent notes.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </details>
+      <details class="note-workspace__overflow row-action-menu"
+               data-menu-align="left"
+               {% if new_folder_error %}open{% endif %}>
+        <summary class="icon-button tree-nav__row-menu-trigger note-workspace__overflow-toggle"
+                 aria-label="More note actions"
+                 data-tooltip="More note actions">{% include "core/icons/menu-dots.svg" %}</summary>
+        <div class="tree-nav__row-menu-panel note-workspace__overflow-menu">
+          <details class="tree-nav__action tree-nav__action--new-note">
+            <summary class="tree-nav__row-menu-item">New note</summary>
+            <form class="tree-nav__action-form" method="post" action="{% url 'notes:note_create_sibling' note.id %}">
+              {% csrf_token %}
+              <label for="overflow-new-note-folder">Create new note in</label>
+              <select id="overflow-new-note-folder" name="folder">
+                <option value="" {% if not note.folder_id %}selected{% endif %}>Unfiled</option>
+                {% for folder in folders %}
+                  <option value="{{ folder.id }}" {% if folder.id == note.folder_id %}selected{% endif %}>{{ folder.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="tree-nav__popover-form-actions">
+                <button type="button" class="button-link button-link--secondary" data-row-menu-cancel>Cancel</button>
+                <button type="submit">Create note</button>
+              </div>
+            </form>
+          </details>
+          <details class="tree-nav__action tree-nav__action--new-folder" {% if new_folder_error %}open{% endif %}>
+            <summary class="tree-nav__row-menu-item">New folder</summary>
+            <form class="tree-nav__action-form"
+                  method="post"
+                  action="{% url 'notes:folder_create' note.id %}"
+                  data-new-folder-form>
+              {% csrf_token %}
+              <label for="overflow-new-folder-name">Folder name</label>
+              <input type="text"
+                     id="overflow-new-folder-name"
+                     name="name"
+                     maxlength="255"
+                     value="{{ new_folder_name|default:'' }}"
+                     aria-describedby="overflow-new-folder-error"
+                     {% if new_folder_error %}aria-invalid="true"{% endif %}>
+              <p class="tree-nav__popover-field-error"
+                 id="overflow-new-folder-error"
+                 role="alert"
+                 {% if not new_folder_error %}hidden{% endif %}>{{ new_folder_error }}</p>
+              <div class="tree-nav__popover-form-actions">
+                <button type="button" class="button-link button-link--secondary" data-row-menu-cancel>Cancel</button>
+                <button type="submit">Create folder</button>
+              </div>
+            </form>
+          </details>
+          <button type="button" class="tree-nav__row-menu-item" data-note-rename-trigger>Rename</button>
+          <details class="tree-nav__action tree-nav__action--move-note">
+            <summary class="tree-nav__row-menu-item">Move</summary>
+            <form class="tree-nav__action-form" method="post" action="{% url 'notes:note_move' note.id %}">
+              {% csrf_token %}
+              <label for="overflow-move-folder">Move this note to</label>
+              <select id="overflow-move-folder" name="folder">
+                {% if note.folder.trashed_at %}
+                  <option value="keep-current-folder" selected>Currently in "{{ note.folder.name }}" (trashed) — choose a destination</option>
+                {% endif %}
+                <option value="" {% if not note.folder_id %}selected{% endif %}>Unfiled</option>
+                {% for folder in folders %}
+                  <option value="{{ folder.id }}" {% if folder.id == note.folder_id %}selected{% endif %}>{{ folder.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="tree-nav__popover-form-actions">
+                <button type="button" class="button-link button-link--secondary" data-row-menu-cancel>Cancel</button>
+                <button type="submit">Move</button>
+              </div>
+            </form>
+          </details>
+          <a class="tree-nav__row-menu-item"
+             href="{% url 'notes:print' note.id %}"
+             target="_blank"
+             rel="noopener"
+             data-note-print-link>Print</a>
+          <a class="tree-nav__row-menu-item"
+             href="{% url 'notes:export' note.id %}"
+             data-note-export-link>Export JSON</a>
+          <a class="tree-nav__row-menu-item"
+             href="{% url 'notes:download_text' note.id %}"
+             data-note-download-link>Download</a>
+          <a class="tree-nav__row-menu-item"
+             href="{% url 'notes:download_markdown' note.id %}"
+             data-note-download-markdown-link>Download Markdown</a>
+          <button type="submit" form="note-duplicate-form" class="tree-nav__row-menu-item">Duplicate</button>
+          <a class="tree-nav__row-menu-item"
+             href="{% url 'notes:detail' note.id %}"
+             target="_blank"
+             rel="noopener">Open in new tab</a>
+        </div>
+      </details>
+    </nav>
+    <nav class="account-nav account-nav--workspace account-nav--center"
+         aria-label="RidgeNote">
+      <a class="brand-link" href="{% url 'home' %}"><span class="brand-mark">{% include "branding/ridgenote-mark.svg" %}</span>RidgeNote</a>
+    </nav>
+    <nav class="account-nav account-nav--workspace account-nav--right"
+         aria-label="Workspace navigation">
+      <details class="account-menu">
+        <summary class="account-menu__trigger">{{ request.user.display_label }}</summary>
+        <div class="account-menu__dropdown">
+          <span class="account-menu__identity">Signed in as {{ request.user.display_label }}</span>
+          <hr class="account-menu__divider">
+          <a class="account-menu__item" href="{% url 'accounts:account' %}"{% if request.resolver_match.url_name == "account" %} aria-current="page"{% endif %}>Account</a>
+          <a class="account-menu__item" href="{% url 'accounts:preferences' %}"{% if request.resolver_match.url_name == "preferences" %} aria-current="page"{% endif %}>Preferences</a>
+          <a class="account-menu__item" href="{% url 'accounts:tag_management' %}"{% if request.resolver_match.url_name == "tag_management" %} aria-current="page"{% endif %}>Tag manager</a>
+          <a class="account-menu__item" href="{% url 'notes:full_search' %}"{% if request.resolver_match.url_name == "full_search" %} aria-current="page"{% endif %}>Full Search</a>
+          <a class="account-menu__item" href="{% url 'notes:library_backup_download' %}">
+            Download library backup
+          </a>
+          {% include "notes/_account_menu_trash_items.html" %}
+          <hr class="account-menu__divider">
+          <form class="logout-form account-menu__signout" method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="account-menu__item account-menu__item--danger">Sign out</button>
+          </form>
+        </div>
+      </details>
+      {% include "core/_theme_quick_selector.html" %}
+      <button type="button"
+              class="global-search-trigger"
+              data-global-search-toggle
+              aria-expanded="false"
+              aria-controls="global-search-panel">Search</button>
+      <a href="{% url 'help' %}"
+         class="help-trigger"
+         data-help-toggle
+         aria-label="Help"
+         aria-expanded="false"
+         aria-controls="help-panel">?</a>
+    </nav>
+  </header>
+{% endblock %}
+
+{% block content %}
+  <section class="workspace-shell" data-tree-shell>
+    <div class="workspace-shell__layout">
+      {% include "notes/_workspace_tree_rail.html" with id_prefix="tree" %}
+      <section class="note-workspace" aria-labelledby="note-title-heading">
+        <!-- The page-level heading must be first in
+             DOM/reading order among this section's headings, not
+             inside the note form's ribbon after the Tags heading below,
+             which would be an invalid heading-level-2-
+             before-heading-level-1 sequence for screen-reader navigation.
+             `position: absolute` (`.visually-hidden`) takes it out of
+             normal flow entirely, so its placement has no visual effect
+             at any width or theme. -->
+        <h1 id="note-title-heading" class="visually-hidden">Edit note</h1>
+        <div class="note-controls-frame" data-note-controls-frame aria-hidden="true"></div>
+        <div class="note-workspace__meta">
+          <div class="note-tags note-tags--compact" data-note-tags>
+            <h2 class="visually-hidden">Tags</h2>
+            <!-- The
+                 Add-tag form comes first in source order, stationary at
+                 the start of the tag panel, with the chip list flowing
+                 after it -- if the chip list came first, each new
+                 chip would grow the list's own preferred width and
+                 push the whole form sideways or onto a new line. Both
+                 remain flex items of the same `.note-tags` flex-wrap row;
+                 the form anchors the row
+                 and chips wrap after it instead of before it. -->
+            <form class="note-tags__assign-form"
+                  method="post"
+                  action="{% url 'notes:note_tag_assign' note.id %}"
+                  data-tag-suggestions-url="{% url 'notes:note_tag_suggestions' note.id %}">
+              {% csrf_token %}
+              <div class="note-tags__name-field" data-tag-name-field>
+                <label for="note-tag-name" class="visually-hidden">Tag name</label>
+                <input type="text"
+                       id="note-tag-name"
+                       name="name"
+                       maxlength="100"
+                       list="note-tag-options"
+                       placeholder="Add a tag"
+                       value="{{ tag_name|default:'' }}"
+                       autocomplete="off"
+                       {% if request.user.tag_uppercase_enabled %}data-tag-name-input{% endif %}
+                       {% if tag_error %}aria-invalid="true" aria-describedby="note-tag-error" autofocus{% endif %}>
+                <datalist id="note-tag-options">
+                  {% for tag_name_option in owner_tag_names %}
+                    <option value="{{ tag_name_option }}"></option>
+                  {% endfor %}
+                </datalist>
+                <ul class="tag-suggestions__panel"
+                    id="note-tag-suggestions-listbox"
+                    role="listbox"
+                    aria-label="Tag suggestions"
+                    data-tag-suggestions-panel
+                    hidden></ul>
+              </div>
+              <label for="note-tag-color" class="visually-hidden">Tag color</label>
+              <select id="note-tag-color" name="color">
+                <option value="">Default color</option>
+                {% for value, label in tag_color_choices %}
+                  <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="note-tags__submit">Add tag</button>
+              {% if tag_error %}
+                <p class="note-tags__error" id="note-tag-error" role="alert">{{ tag_error }}</p>
+              {% endif %}
+              <p class="note-tags__length-warning"
+                 id="note-tag-length-warning"
+                 role="alert"
+                 data-tag-name-length-warning
+                 hidden></p>
+            </form>
+            <ul class="note-tags__list">
+              {% for tag in note_tags %}
+                <li class="note-tags__chip" data-tag-color="{{ tag.color }}">
+                  <span class="note-tags__chip-label">{{ tag.name }}</span>
+                  <form class="note-tags__remove-form"
+                        method="post"
+                        action="{% url 'notes:note_tag_remove' note.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="tag_id" value="{{ tag.id }}">
+                    <button type="submit"
+                            class="note-tags__remove-button"
+                            aria-label="Remove tag {{ tag.name }}">&times;</button>
+                  </form>
+                </li>
+              {% empty %}
+                <li class="note-tags__empty">No tags yet.</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+
+        <form id="note-duplicate-form" method="post" action="{% url 'notes:note_duplicate' note.id %}" hidden>
+          {% csrf_token %}
+        </form>
+
+        <form method="post"
+              class="note-form note-workspace__form"
+              data-note-form
+              data-note-title-input-id="{{ form.title.id_for_label }}"
+              data-note-generated-title="{{ generated_title }}"
+              data-note-is-immediate-new-page="{{ is_immediate_new_note_page|yesno:'true,false' }}"
+              data-note-autosave-url="{% url 'notes:autosave' note.id %}"
+              data-note-freshness-url="{% url 'notes:freshness' note.id %}"
+              data-note-print-url="{% url 'notes:print' note.id %}"
+              data-note-detail-url="{% url 'notes:detail' note.id %}"
+              data-note-conflicted="false">
+          {% csrf_token %}
+          {{ form.body_json }}
+          {{ form.version }}
+
+          <div class="note-workspace__ribbon" data-workspace-ribbon>
+            <div class="note-workspace__ribbon-main">
+              <div class="note-context">
+                <div class="note-workspace__title-wrap">
+                  {{ form.title }}
+                  {{ form.title.errors }}
+                </div>
+                <span class="note-workspace__save-status"
+                      data-note-save-status
+                      role="status"
+                      aria-live="polite">
+                  Saved
+                </span>
+              </div>
+
+              <div class="note-workspace__actions" aria-label="Note controls">
+                <button type="submit" data-note-save-button>Save</button>
+                <button type="button"
+                        class="button-link button-link--secondary note-workspace__formatting-toggle"
+                        data-note-toolbar-toggle
+                        aria-controls="note-formatting-toolbar"
+                        aria-expanded="false">
+                  Show formatting
+                </button>
+              </div>
+            </div>
+
+            <div class="note-workspace__notice"
+                 data-note-save-notice
+                 hidden
+                 aria-live="polite">
+              <p class="note-workspace__notice-text" data-note-save-notice-text></p>
+              <div class="note-workspace__notice-actions" data-note-notice-actions hidden>
+                <button type="button"
+                        class="button-link button-link--secondary note-workspace__recovery-button"
+                        data-note-copy-local
+                        data-copy-state="ready"
+                        hidden>
+                  Copy local draft
+                </button>
+                <button type="button"
+                        class="button-link button-link--secondary note-workspace__recovery-button"
+                        data-note-reload-latest
+                        hidden>
+                  Reload latest
+                </button>
+              </div>
+            </div>
+
+            {{ form.non_field_errors }}
+            {{ form.body_json.errors }}
+
+            <div class="editor-toolbar"
+                 id="note-formatting-toolbar"
+                 data-note-toolbar
+                 hidden
+                 aria-label="Note formatting controls">
+              <button type="button"
+                      class="icon-button"
+                      data-note-command="bold"
+                      aria-label="Bold"
+                      data-tooltip="Bold">{% include "core/icons/bold.svg" %}</button>
+              <button type="button"
+                      class="icon-button"
+                      data-note-command="italic"
+                      aria-label="Italic"
+                      data-tooltip="Italic">{% include "core/icons/italic.svg" %}</button>
+              <button type="button"
+                      class="icon-button"
+                      data-note-command="underline"
+                      aria-label="Underline"
+                      data-tooltip="Underline">{% include "core/icons/underline.svg" %}</button>
+              <button type="button" data-note-command="heading" data-note-level="1">H1</button>
+              <button type="button" data-note-command="heading" data-note-level="2">H2</button>
+              <button type="button" data-note-command="heading" data-note-level="3">H3</button>
+              <button type="button"
+                      class="icon-button"
+                      data-note-command="bulletList"
+                      aria-label="Bulleted list"
+                      data-tooltip="Bulleted list">{% include "core/icons/list.svg" %}</button>
+              <button type="button"
+                      class="icon-button"
+                      data-note-command="orderedList"
+                      aria-label="Numbered list"
+                      data-tooltip="Numbered list">{% include "core/icons/list-ordered.svg" %}</button>
+              <button type="button"
+                      class="icon-button"
+                      data-note-command="link"
+                      aria-label="Link"
+                      data-tooltip="Link">{% include "core/icons/link.svg" %}</button>
+              <button type="button" data-note-command="clearFormatting">Clear</button>
+              <button type="button"
+                      class="icon-button"
+                      data-note-command="undo"
+                      aria-label="Undo"
+                      data-tooltip="Undo">{% include "core/icons/undo-2.svg" %}</button>
+              <button type="button"
+                      class="icon-button"
+                      data-note-command="redo"
+                      aria-label="Redo"
+                      data-tooltip="Redo">{% include "core/icons/redo-2.svg" %}</button>
+            </div>
+          </div>
+
+          <div class="note-workspace__editor-shell">
+            <div
+              class="note-editor"
+              data-note-editor-root
+              data-note-input-id="{{ form.body_json.id_for_label }}"
+              data-note-schema-version="{{ editor_schema_version }}"
+              data-note-document-id="{{ editor_document_script_id }}"
+            ></div>
+          </div>
+          {{ note.body_json|json_script:editor_document_script_id }}
+        </form>
+      </section>
+    </div>
+  </section>
+
+  {% include "notes/_nav_drawer.html" %}
+{% endblock %}

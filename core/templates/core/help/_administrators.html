@@ -1,0 +1,148 @@
+<section aria-labelledby="help-administrators" data-help-topic="help-administrators">
+  <h2 id="help-administrators">For Administrators</h2>
+
+  <p>This section covers administrator actions available inside RidgeNote itself.</p>
+  <p>
+    Server setup, Docker, SMTP, database maintenance, reverse proxy
+    configuration, backups of the RidgeNote server, and other
+    deployment tasks are outside the scope of in-app Help and should be
+    handled through the operator documentation. This also covers
+    emergency administrator password recovery for an administrator who
+    cannot sign in and has no other administrator available to help.
+  </p>
+
+  <h3>Managing users</h3>
+  <p>
+    Open <strong>Admin</strong> from the account menu to reach the
+    <strong>Users</strong> list.
+  </p>
+  <p>
+    From there, administrators can create new users, manage
+    invitations, and open an individual user's account for additional
+    actions.
+  </p>
+
+  <h4>Creating and inviting users</h4>
+  <p>
+    When creating a user, you can either set an initial password
+    directly or create an invitation that allows the user to choose
+    their own password.
+  </p>
+  <p>
+    If email delivery is configured, RidgeNote can send the invitation
+    automatically. Otherwise, the invitation link can be provided to
+    the user manually.
+  </p>
+  <p>Pending invitations can be:</p>
+  <ul>
+    <li><strong>Reissued</strong>, which creates a fresh invitation link.</li>
+    <li><strong>Revoked</strong> when the invitation is no longer needed.</li>
+  </ul>
+
+  <h3>Managing an existing account</h3>
+  <p>Open a user from the <strong>Users</strong> list to manage that account.</p>
+  <p>Depending on the account's current state, administrators can:</p>
+  <ul>
+    <li>Change the user's role.</li>
+    <li>Disable or re-enable the account using <strong>Enabled</strong>.</li>
+    <li>Reset the user's password on their behalf.</li>
+    <li><strong>Schedule deletion</strong>.</li>
+    <li><strong>Cancel deletion</strong> while the account is still within its recovery period.</li>
+    <li><strong>Permanently purge</strong> an account once it becomes eligible.</li>
+  </ul>
+
+  <h3>Account deletion and recovery</h3>
+  <p>
+    Selecting <strong>Schedule deletion</strong> immediately disables
+    the account and begins a <strong>7-day grace period</strong>.
+  </p>
+  <p>
+    During those seven days, <strong>Cancel deletion</strong> can be
+    used to keep the account and return it to service.
+  </p>
+  <p>
+    After the recovery period expires, <strong>Permanently purge</strong>
+    becomes available. Purging requires typing the account's exact
+    username as confirmation and cannot be undone through RidgeNote.
+  </p>
+  <p>
+    Permanent purge removes the account and its RidgeNote library,
+    including its notes, folders, and tags.
+  </p>
+
+  <h3>Administrator safety protections</h3>
+  <p>
+    RidgeNote includes protections intended to prevent an administrator
+    from accidentally removing the last usable administrator account.
+  </p>
+  <p>In particular:</p>
+  <ul>
+    <li>The last active administrator cannot be disabled or scheduled for deletion.</li>
+    <li>An administrator cannot permanently purge their own account.</li>
+  </ul>
+  <p>
+    These protections help ensure that RidgeNote always retains an
+    account capable of performing administrative tasks.
+  </p>
+
+  <h3>Administrator Recovery</h3>
+  <p>
+    Open <strong>Global Trash Recovery</strong> from the account menu
+    to view recoverable notes and folders belonging to RidgeNote users.
+  </p>
+  <p>
+    Items appear here after they leave the owner's own Trash window but
+    before they reach the final <strong>90-day</strong> purge boundary.
+    See <a href="{% url 'help' %}#help-trash-recovery" data-help-topic-link>Trash and Recovery</a>
+    for the full lifecycle.
+  </p>
+  <p>
+    Administrators can identify recoverable items using limited
+    metadata, but Administrator Recovery does not provide access to
+    the contents of a deleted note.
+  </p>
+
+  <h4>Where recovered notes go</h4>
+  <p>When possible, RidgeNote restores a note to its original folder.</p>
+  <p>
+    If the original folder is no longer available, RidgeNote places
+    the note in the user's <strong>Recovered Items</strong> folder
+    instead.
+  </p>
+  <p>
+    If an unrelated folder already uses that name, RidgeNote
+    automatically chooses a safe alternative name such as
+    <strong>Recovered Items (2)</strong> rather than overwriting,
+    renaming, or merging the existing folder.
+  </p>
+
+  <h4>Recovering folders when a name is already in use</h4>
+  <p>Administrator folder recovery is designed to avoid overwriting an active folder.</p>
+  <p>
+    If a recovered folder's original name is already being used,
+    RidgeNote automatically restores the folder under a safe
+    alternative name such as:
+  </p>
+  <ul>
+    <li><strong>PROJECTS (Restored)</strong></li>
+    <li><strong>PROJECTS (Restored 2)</strong></li>
+  </ul>
+  <p>RidgeNote does not merge the recovered folder into the existing one or overwrite either folder.</p>
+  <p>Associated notes that are still eligible for recovery are restored with the folder.</p>
+
+  <h3>Administrator Recovery is not a backup</h3>
+  <p>
+    Administrator Recovery exists to help users recover recently
+    deleted information. It is still subject to RidgeNote's recovery
+    time limits and final purge process.
+  </p>
+  <p>
+    It should not be treated as a substitute for regular
+    <strong>Library Backups</strong> or whole-system backups maintained
+    by the RidgeNote operator.
+  </p>
+  <p>
+    See <a href="{% url 'help' %}#help-library-backup" data-help-topic-link>Library Backup and Restore</a>
+    for the user-level backup and restore tools.
+  </p>
+</section>

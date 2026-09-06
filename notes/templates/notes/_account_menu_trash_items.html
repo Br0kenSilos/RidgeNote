@@ -1,0 +1,18 @@
+{% comment %}
+The Trash-related entries of the user menu, shared
+verbatim across the three account-menu copies (`base.html`'s default
+header, `detail.html`'s workspace header, and `_nav_drawer.html`'s
+narrow-drawer account footer) rather than duplicated three times with
+independent wording. Administrators see Global Trash Recovery (the
+administrator-only recovery view) followed by View My
+Trash (their own Trash); everyone else sees only View My Trash.
+{% endcomment %}
+{% if request.user.role == "admin" %}
+  <hr class="account-menu__divider">
+  <a class="account-menu__item" href="{% url 'accounts:user_list' %}">Admin</a>
+  <a class="account-menu__item" href="{% url 'notes:admin_recovery' %}">Global Trash Recovery</a>
+  <a class="account-menu__item" href="{% url 'notes:trash' %}">View My Trash</a>
+{% else %}
+  <hr class="account-menu__divider">
+  <a class="account-menu__item" href="{% url 'notes:trash' %}">View My Trash</a>
+{% endif %}

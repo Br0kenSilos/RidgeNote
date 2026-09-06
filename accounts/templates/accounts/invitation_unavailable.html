@@ -1,0 +1,7 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <h1>Invitation Unavailable</h1>
+  <p>This invitation is invalid or has expired.</p>
+  <p><a href="{% url 'accounts:login' %}">Go to sign in</a></p>
+{% endblock %}

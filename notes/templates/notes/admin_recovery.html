@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Administrator Recovery - RidgeNote{% endblock %}
+
+{% block content %}
+  <section class="panel panel--admin-recovery" aria-labelledby="admin-recovery-title">
+    <div class="panel-header">
+      <div>
+        <h1 id="admin-recovery-title">Administrator Recovery</h1>
+        <p class="muted">
+          Items no longer visible in their owner's Trash but still recoverable until their
+          final purge date. This is metadata only; note and folder content is never shown here.
+        </p>
+      </div>
+    </div>
+
+    <form class="admin-recovery-filter-form" method="get" action="{% url 'notes:admin_recovery' %}">
+      <label for="admin-recovery-owner-select" class="admin-recovery-filter-form__label">Owner</label>
+      <select id="admin-recovery-owner-select" name="owner" class="admin-recovery-filter-form__select">
+        <option value="" {% if not selected_owner_id %}selected{% endif %}>All owners</option>
+        {% for option in owner_options %}
+          <option value="{{ option.id }}" {% if option.id == selected_owner_id %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="admin-recovery-filter-form__apply button-link button-link--secondary">Apply</button>
+      {% if selected_owner_id %}
+        <a class="admin-recovery-filter-form__clear" href="{% url 'notes:admin_recovery' %}">Clear filter</a>
+      {% endif %}
+    </form>
+
+    {% if folders %}
+      <h2>Folders</h2>
+      <ul class="note-list note-list--admin-recovery">
+        {% for item in folders %}
+          <li class="note-list__item trash-item" data-folder-id="{{ item.id }}">
+            <div class="note-list__row">
+              <div class="note-list__content">
+                <div class="note-list__title-row">
+                  <span class="note-list__type">Folder</span>
+                  <span class="note-list__title">{{ item.title }}</span>
+                </div>
+                <p class="note-list__meta">
+                  <span class="note-list__owner">{{ item.owner_label }}</span>
+                  <span class="note-list__meta-sep" aria-hidden="true">-</span>
+                  <span class="note-list__restore-count">Restores {{ item.associated_restorable_note_count }} note{{ item.associated_restorable_note_count|pluralize }}</span>
+                </p>
+                <dl class="trash-item__lifecycle">
+                  <div class="trash-item__lifecycle-entry">
+                    <dt>Moved to Trash</dt>
+                    <dd>{{ item.trashed_at }}</dd>
+                  </div>
+                  <div class="trash-item__lifecycle-entry">
+                    <dt>Emptied</dt>
+                    <dd>{% if item.emptied_at %}{{ item.emptied_at }}{% else %}-{% endif %}</dd>
+                  </div>
+                  <div class="trash-item__lifecycle-entry">
+                    <dt>Left owner Trash</dt>
+                    <dd>{{ item.owner_visible_expiration_at }}</dd>
+                  </div>
+                </dl>
+                <div class="trash-item__footer">
+                  <dl class="trash-item__lifecycle trash-item__lifecycle--final">
+                    <div class="trash-item__lifecycle-entry trash-item__lifecycle-entry--emphasis">
+                      <dt>Final purge</dt>
+                      <dd>{{ item.final_purge_at }}</dd>
+                    </div>
+                  </dl>
+                  <div class="note-list__actions">
+                    <button type="button"
+                            class="button-link button-link--secondary"
+                            data-restore-trigger
+                            data-restore-kind="folder"
+                            data-restore-name="{{ item.title }}"
+                            data-restore-count="{{ item.associated_restorable_note_count }}"
+                            data-restore-action="{% url 'notes:admin_folder_restore' item.id %}"
+                            {% if selected_owner_id %}data-restore-owner="{{ selected_owner_id }}"{% endif %}>Restore</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if notes %}
+      <h2>Notes</h2>
+      <ul class="note-list note-list--admin-recovery">
+        {% for item in notes %}
+          <li class="note-list__item trash-item" data-note-id="{{ item.id }}">
+            <div class="note-list__row">
+              <div class="note-list__content">
+                <div class="note-list__title-row">
+                  <span class="note-list__type">Note</span>
+                  <span class="note-list__title">{{ item.title }}</span>
+                </div>
+                <p class="note-list__meta">
+                  <span class="note-list__owner">{{ item.owner_label }}</span>
+                  <span class="note-list__meta-sep" aria-hidden="true">-</span>
+                  <span class="note-list__location">{% if item.folder_name %}Original folder: {{ item.folder_name }}{% else %}Unfiled{% endif %}</span>
+                </p>
+                <dl class="trash-item__lifecycle">
+                  <div class="trash-item__lifecycle-entry">
+                    <dt>Moved to Trash</dt>
+                    <dd>{{ item.trashed_at }}</dd>
+                  </div>
+                  <div class="trash-item__lifecycle-entry">
+                    <dt>Emptied</dt>
+                    <dd>{% if item.emptied_at %}{{ item.emptied_at }}{% else %}-{% endif %}</dd>
+                  </div>
+                  <div class="trash-item__lifecycle-entry">
+                    <dt>Left owner Trash</dt>
+                    <dd>{{ item.owner_visible_expiration_at }}</dd>
+                  </div>
+                </dl>
+                <div class="trash-item__footer">
+                  <dl class="trash-item__lifecycle trash-item__lifecycle--final">
+                    <div class="trash-item__lifecycle-entry trash-item__lifecycle-entry--emphasis">
+                      <dt>Final purge</dt>
+                      <dd>{{ item.final_purge_at }}</dd>
+                    </div>
+                  </dl>
+                  <div class="note-list__actions">
+                    <form method="post" action="{% url 'notes:admin_note_restore' item.id %}">
+                      {% csrf_token %}
+                      {% if selected_owner_id %}
+                        <input type="hidden" name="owner" value="{{ selected_owner_id }}">
+                      {% endif %}
+                      <button type="submit" class="button-link button-link--secondary">Restore</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if not notes and not folders %}
+      {% if selected_owner_id %}
+        <div class="empty-state empty-state--compact">
+          <h2>No recoverable items for this owner.</h2>
+          <p><a href="{% url 'notes:admin_recovery' %}">Clear filter</a> to see items for all owners.</p>
+        </div>
+      {% else %}
+        <div class="empty-state empty-state--compact">
+          <h2>Nothing to recover</h2>
+          <p>No notes or folders are currently in administrator-only recovery.</p>
+        </div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

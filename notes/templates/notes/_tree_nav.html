@@ -1,0 +1,408 @@
+<div class="tree-nav"
+     data-tree-scope="{{ id_prefix }}"
+     data-move-url-template="{% if note %}{% url 'notes:note_move' 0 %}{% else %}{% url 'notes:note_move_home' 0 %}{% endif %}"
+     data-note-trash-url-template="{% url 'notes:note_delete' 0 %}"
+     data-folder-trash-url-template="{% url 'notes:folder_delete_home' 0 %}">
+  <div class="tree-nav__actions">
+    <div class="tree-nav__creation-toolbar" role="group" aria-label="Create">
+      <form class="inline-form tree-nav__action tree-nav__action--new-note"
+            method="post"
+            action="{% url 'notes:create' %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="icon-button tree-nav__action-trigger"
+                aria-label="New note"
+                data-tooltip="New note">{% include "core/icons/note-new.svg" %}</button>
+      </form>
+
+      <details class="tree-nav__action tree-nav__action--new-folder row-action-menu" data-menu-align="left" {% if new_folder_error %}open{% endif %}>
+        <summary class="icon-button tree-nav__action-trigger"
+                 aria-label="New folder"
+                 data-tooltip="New folder">{% include "core/icons/folder-new.svg" %}</summary>
+        <div class="tree-nav__row-menu-panel tree-nav__row-menu-panel--align-left tree-nav__new-folder-panel">
+          <form class="tree-nav__popover-form"
+                method="post"
+                action="{% if note %}{% url 'notes:folder_create' note.id %}{% else %}{% url 'notes:folder_create_home' %}{% endif %}"
+                data-new-folder-form>
+            {% csrf_token %}
+            <label for="{{ id_prefix }}-new-folder-name">Folder name</label>
+            <input type="text"
+                   id="{{ id_prefix }}-new-folder-name"
+                   name="name"
+                   maxlength="255"
+                   value="{{ new_folder_name|default:'' }}"
+                   aria-describedby="{{ id_prefix }}-new-folder-error"
+                   {% if new_folder_error %}aria-invalid="true"{% endif %}>
+            <p class="tree-nav__popover-field-error" id="{{ id_prefix }}-new-folder-error" role="alert" {% if not new_folder_error %}hidden{% endif %}>{{ new_folder_error }}</p>
+            <div class="tree-nav__popover-form-actions">
+              <button type="button" class="button-link button-link--secondary" data-row-menu-cancel>Cancel</button>
+              <button type="submit">Create folder</button>
+            </div>
+          </form>
+        </div>
+      </details>
+
+      {% if note %}
+        <details class="tree-nav__action tree-nav__action--move row-action-menu" data-menu-align="left">
+          <summary class="icon-button tree-nav__action-trigger"
+                   aria-label="Move note"
+                   data-tooltip="Move note">{% include "core/icons/move.svg" %}</summary>
+          <div class="tree-nav__row-menu-panel tree-nav__row-menu-panel--align-left tree-nav__move-panel">
+            <form class="tree-nav__popover-form" method="post" action="{% url 'notes:note_move' note.id %}">
+              {% csrf_token %}
+              <label for="{{ id_prefix }}-move-folder">Move this note to</label>
+              <select id="{{ id_prefix }}-move-folder" name="folder">
+                {% if note.folder.trashed_at %}
+                  <option value="keep-current-folder" selected>Currently in "{{ note.folder.name }}" (trashed) — choose a destination</option>
+                {% endif %}
+                <option value="" {% if not note.folder_id %}selected{% endif %}>Unfiled</option>
+                {% for folder in folders %}
+                  <option value="{{ folder.id }}" {% if folder.id == note.folder_id %}selected{% endif %}>{{ folder.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="tree-nav__popover-form-actions">
+                <button type="button" class="button-link button-link--secondary" data-row-menu-cancel>Cancel</button>
+                <button type="submit">Move</button>
+              </div>
+            </form>
+          </div>
+        </details>
+      {% else %}
+        <div class="tree-nav__action--move" hidden>
+          <form method="post" action="{% url 'notes:note_move_home' 0 %}">
+            {% csrf_token %}
+            <select name="folder">
+              <option value=""></option>
+              {% for folder in folders %}
+                <option value="{{ folder.id }}"></option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+      {% endif %}
+
+      {% comment %}
+      Two JS/drag-only forms, always hidden -- there
+      is no visible "confirm trashing this item" popover for either, since
+      a drag-to-Trash (and the separate note-detail quick-trash button,
+      which posts to this same `note_delete` route directly) is an
+      intentional, reversible action that skips the existing confirmation
+      page on purpose. Both reuse the exact same routes, hidden context
+      fields, and return-destination logic the row-menu Delete link and
+      note-detail's quick-trash action already use -- no new backend
+      route, no lifecycle logic duplicated here.
+      {% endcomment %}
+      <div class="tree-nav__action--trash-note" hidden>
+        <form method="post" action="{% url 'notes:note_delete' 0 %}">
+          {% csrf_token %}
+          <input type="hidden" name="origin" value="{% if note %}note_detail{% elif tree_origin == "all_notes" %}all_notes{% else %}home{% endif %}">
+          {% if note %}<input type="hidden" name="current_note" value="{{ note.id }}">{% endif %}
+          {% if tree_origin == "all_notes" %}
+            <input type="hidden" name="page" value="{{ page_obj.number }}">
+            <input type="hidden" name="sort" value="{{ sort }}">
+          {% endif %}
+        </form>
+      </div>
+      <div class="tree-nav__action--trash-folder" hidden>
+        <form method="post" action="{% url 'notes:folder_delete_home' 0 %}">
+          {% csrf_token %}
+          <input type="hidden" name="origin" value="{% if note %}note_detail{% elif tree_origin == "all_notes" %}all_notes{% else %}home{% endif %}">
+          {% if note %}<input type="hidden" name="current_note" value="{{ note.id }}">{% endif %}
+          {% if tree_origin == "all_notes" %}
+            <input type="hidden" name="page" value="{{ page_obj.number }}">
+            <input type="hidden" name="sort" value="{{ sort }}">
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="tree-nav__filter">
+    <label for="{{ id_prefix }}-tree-filter" class="visually-hidden">Filter notes</label>
+    <input type="text"
+           id="{{ id_prefix }}-tree-filter"
+           class="tree-nav__filter-input"
+           data-tree-filter-input
+           placeholder="Filter notes…"
+           autocomplete="off">
+  </div>
+
+  <div class="tree-nav__viewport">
+    <ul class="tree-nav__list">
+      {% for folder in folders %}
+        <li class="tree-nav__folder" data-folder-id="{{ folder.id }}">
+          <div class="tree-nav__row tree-nav__folder-row">
+            {% if not folder.is_recovery_folder %}
+              <span class="tree-nav__drag-handle"
+                    draggable="true"
+                    role="img"
+                    aria-label="Drag to move {{ folder.name }} to Trash"
+                    title="Drag to move {{ folder.name }} to Trash">⠿</span>
+            {% endif %}
+            <details class="tree-nav__folder-details" {% if folder.id == note.folder_id %}open{% endif %}>
+              <summary class="tree-nav__folder-disclosure">
+                {% include "core/icons/chevron.svg" %}
+                <span class="tree-nav__label">{{ folder.name }}</span>
+              </summary>
+            </details>
+            <details class="tree-nav__row-menu tree-nav__folder-menu row-action-menu">
+              <summary class="tree-nav__row-menu-trigger icon-button" aria-label="Actions for {{ folder.name }}">{% include "core/icons/menu-dots.svg" %}</summary>
+              <div class="tree-nav__row-menu-panel">
+                <form method="post"
+                      action="{% if note %}{% url 'notes:folder_note_create' note.id folder.id %}{% else %}{% url 'notes:folder_note_create_home' folder.id %}{% endif %}">
+                  {% csrf_token %}
+                  <button type="submit" class="tree-nav__row-menu-item">New note in this folder</button>
+                </form>
+                <details class="tree-nav__action tree-nav__action--rename-folder">
+                  <summary class="tree-nav__row-menu-item">Rename</summary>
+                  <form class="tree-nav__action-form"
+                        method="post"
+                        action="{% if note %}{% url 'notes:folder_rename' note.id folder.id %}{% else %}{% url 'notes:folder_rename_home' folder.id %}{% endif %}">
+                    {% csrf_token %}
+                    <label for="{{ id_prefix }}-folder-{{ folder.id }}-rename-name">Folder name</label>
+                    <input type="text"
+                           id="{{ id_prefix }}-folder-{{ folder.id }}-rename-name"
+                           name="name"
+                           maxlength="255"
+                           value="{{ folder.name }}">
+                    <button type="submit">Rename</button>
+                  </form>
+                </details>
+                <button type="button"
+                        class="tree-nav__row-menu-item tree-nav__row-menu-item--danger"
+                        data-delete-trigger
+                        data-delete-kind="folder"
+                        data-delete-name="{{ folder.name }}"
+                        data-delete-action="{% if note %}{% url 'notes:folder_delete' note.id folder.id %}{% else %}{% url 'notes:folder_delete_home' folder.id %}{% endif %}"
+                        data-delete-origin="{% if note %}note_detail{% elif tree_origin == "all_notes" %}all_notes{% else %}home{% endif %}"
+                        {% if note %}data-delete-current-note="{{ note.id }}"{% endif %}
+                        {% if tree_origin == "all_notes" %}data-delete-page="{{ page_obj.number }}" data-delete-sort="{{ sort }}"{% endif %}>Move to Trash</button>
+              </div>
+            </details>
+          </div>
+          <ul class="tree-nav__folder-notes">
+              {% for folder_note in folder.notes.all %}
+                <li class="tree-nav__note-item" data-note-id="{{ folder_note.id }}">
+                  <div class="tree-nav__row tree-nav__note-row{% if folder_note.id == note.id %} tree-nav__row--current{% endif %}">
+                    <span class="tree-nav__drag-handle"
+                          draggable="true"
+                          role="img"
+                          aria-label="Drag to move {{ folder_note.title }}"
+                          title="Drag to move {{ folder_note.title }}">⠿</span>
+                    <a class="tree-nav__note-link"
+                       draggable="false"
+                       href="{% url 'notes:detail' folder_note.id %}"
+                       {% if folder_note.id == note.id %}aria-current="page"{% endif %}>
+                      {% if folder_note.pinned %}<span class="tree-nav__pin-marker" role="img" aria-label="Pinned">★</span>{% endif %}
+                      <span class="tree-nav__label">{{ folder_note.title }}</span>
+                    </a>
+                    <details class="tree-nav__row-menu row-action-menu">
+                      <summary class="tree-nav__row-menu-trigger icon-button" aria-label="Actions for {{ folder_note.title }}">{% include "core/icons/menu-dots.svg" %}</summary>
+                      <div class="tree-nav__row-menu-panel">
+                        <a class="tree-nav__row-menu-item" href="{% url 'notes:detail' folder_note.id %}">Open</a>
+                        <a class="tree-nav__row-menu-item" href="{% url 'notes:detail' folder_note.id %}" target="_blank" rel="noopener">Open in new tab</a>
+                        <details class="tree-nav__action tree-nav__action--rename-folder">
+                          <summary class="tree-nav__row-menu-item">Rename</summary>
+                          <form class="tree-nav__action-form"
+                                method="post"
+                                action="{% if note %}{% url 'notes:note_rename' folder_note.id %}{% else %}{% url 'notes:note_rename_home' folder_note.id %}{% endif %}">
+                            {% csrf_token %}
+                            <label for="{{ id_prefix }}-note-{{ folder_note.id }}-row-menu-title">Rename to</label>
+                            <input type="text"
+                                   id="{{ id_prefix }}-note-{{ folder_note.id }}-row-menu-title"
+                                   name="title"
+                                   maxlength="255"
+                                   value="{{ folder_note.title }}">
+                            <button type="submit">Rename</button>
+                          </form>
+                        </details>
+                        <details class="tree-nav__action tree-nav__action--move-note">
+                          <summary class="tree-nav__row-menu-item">Move</summary>
+                          <form class="tree-nav__action-form"
+                                method="post"
+                                action="{% if note %}{% url 'notes:note_move' folder_note.id %}{% else %}{% url 'notes:note_move_home' folder_note.id %}{% endif %}">
+                            {% csrf_token %}
+                            <label for="{{ id_prefix }}-note-{{ folder_note.id }}-row-menu-folder">Move to</label>
+                            <select id="{{ id_prefix }}-note-{{ folder_note.id }}-row-menu-folder" name="folder">
+                              <option value="" {% if not folder_note.folder_id %}selected{% endif %}>Unfiled</option>
+                              {% for folder in folders %}
+                                <option value="{{ folder.id }}" {% if folder.id == folder_note.folder_id %}selected{% endif %}>{{ folder.name }}</option>
+                              {% endfor %}
+                            </select>
+                            <button type="submit">Move</button>
+                          </form>
+                        </details>
+                        <a class="tree-nav__row-menu-item" href="{% url 'notes:print' folder_note.id %}" target="_blank" rel="noopener">Print</a>
+                        <a class="tree-nav__row-menu-item" href="{% url 'notes:download_text' folder_note.id %}">Download</a>
+                        <form method="post" action="{% url 'notes:note_duplicate' folder_note.id %}">
+                          {% csrf_token %}
+                          <button type="submit" class="tree-nav__row-menu-item">Duplicate</button>
+                        </form>
+                        <button type="button"
+                                class="tree-nav__row-menu-item tree-nav__row-menu-item--danger"
+                                data-delete-trigger
+                                data-delete-kind="note"
+                                data-delete-name="{{ folder_note.title }}"
+                                data-delete-action="{% url 'notes:note_delete' folder_note.id %}"
+                                data-delete-origin="{% if note %}note_detail{% elif tree_origin == "all_notes" %}all_notes{% else %}home{% endif %}"
+                                {% if note %}data-delete-current-note="{{ note.id }}"{% endif %}
+                                {% if tree_origin == "all_notes" %}data-delete-page="{{ page_obj.number }}" data-delete-sort="{{ sort }}"{% endif %}>Move to Trash</button>
+                      </div>
+                    </details>
+                  </div>
+                </li>
+              {% empty %}
+                <li class="tree-nav__empty">No notes in this folder.</li>
+              {% endfor %}
+          </ul>
+        </li>
+      {% endfor %}
+
+      <li class="tree-nav__folder tree-nav__folder--unfiled" data-folder-target="unfiled">
+        <details class="tree-nav__folder-details" open>
+          <summary class="tree-nav__row tree-nav__folder-row">
+            <span class="tree-nav__label">Unfiled</span>
+          </summary>
+          <ul class="tree-nav__notes">
+            {% for unfiled_note in unfiled_notes %}
+              <li class="tree-nav__note-item" data-note-id="{{ unfiled_note.id }}">
+                <div class="tree-nav__row tree-nav__note-row{% if unfiled_note.id == note.id %} tree-nav__row--current{% endif %}">
+                  <span class="tree-nav__drag-handle"
+                        draggable="true"
+                        role="img"
+                        aria-label="Drag to move {{ unfiled_note.title }}"
+                        title="Drag to move {{ unfiled_note.title }}">⠿</span>
+                  <a class="tree-nav__note-link"
+                     draggable="false"
+                     href="{% url 'notes:detail' unfiled_note.id %}"
+                     {% if unfiled_note.id == note.id %}aria-current="page"{% endif %}>
+                    {% if unfiled_note.pinned %}<span class="tree-nav__pin-marker" role="img" aria-label="Pinned">★</span>{% endif %}
+                    <span class="tree-nav__label">{{ unfiled_note.title }}</span>
+                  </a>
+                  <details class="tree-nav__row-menu row-action-menu">
+                    <summary class="tree-nav__row-menu-trigger icon-button" aria-label="Actions for {{ unfiled_note.title }}">{% include "core/icons/menu-dots.svg" %}</summary>
+                    <div class="tree-nav__row-menu-panel">
+                      <a class="tree-nav__row-menu-item" href="{% url 'notes:detail' unfiled_note.id %}">Open</a>
+                      <a class="tree-nav__row-menu-item" href="{% url 'notes:detail' unfiled_note.id %}" target="_blank" rel="noopener">Open in new tab</a>
+                      <details class="tree-nav__action tree-nav__action--rename-folder">
+                        <summary class="tree-nav__row-menu-item">Rename</summary>
+                        <form class="tree-nav__action-form"
+                              method="post"
+                              action="{% if note %}{% url 'notes:note_rename' unfiled_note.id %}{% else %}{% url 'notes:note_rename_home' unfiled_note.id %}{% endif %}">
+                          {% csrf_token %}
+                          <label for="{{ id_prefix }}-note-{{ unfiled_note.id }}-row-menu-title">Rename to</label>
+                          <input type="text"
+                                 id="{{ id_prefix }}-note-{{ unfiled_note.id }}-row-menu-title"
+                                 name="title"
+                                 maxlength="255"
+                                 value="{{ unfiled_note.title }}">
+                          <button type="submit">Rename</button>
+                        </form>
+                      </details>
+                      <details class="tree-nav__action tree-nav__action--move-note">
+                        <summary class="tree-nav__row-menu-item">Move</summary>
+                        <form class="tree-nav__action-form"
+                              method="post"
+                              action="{% if note %}{% url 'notes:note_move' unfiled_note.id %}{% else %}{% url 'notes:note_move_home' unfiled_note.id %}{% endif %}">
+                          {% csrf_token %}
+                          <label for="{{ id_prefix }}-note-{{ unfiled_note.id }}-row-menu-folder">Move to</label>
+                          <select id="{{ id_prefix }}-note-{{ unfiled_note.id }}-row-menu-folder" name="folder">
+                            <option value="" selected>Unfiled</option>
+                            {% for folder in folders %}
+                              <option value="{{ folder.id }}">{{ folder.name }}</option>
+                            {% endfor %}
+                          </select>
+                          <button type="submit">Move</button>
+                        </form>
+                      </details>
+                      <a class="tree-nav__row-menu-item" href="{% url 'notes:print' unfiled_note.id %}" target="_blank" rel="noopener">Print</a>
+                      <a class="tree-nav__row-menu-item" href="{% url 'notes:download_text' unfiled_note.id %}">Download</a>
+                      <form method="post" action="{% url 'notes:note_duplicate' unfiled_note.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="tree-nav__row-menu-item">Duplicate</button>
+                      </form>
+                      <button type="button"
+                              class="tree-nav__row-menu-item tree-nav__row-menu-item--danger"
+                              data-delete-trigger
+                              data-delete-kind="note"
+                              data-delete-name="{{ unfiled_note.title }}"
+                              data-delete-action="{% url 'notes:note_delete' unfiled_note.id %}"
+                              data-delete-origin="{% if note %}note_detail{% elif tree_origin == "all_notes" %}all_notes{% else %}home{% endif %}"
+                              {% if note %}data-delete-current-note="{{ note.id }}"{% endif %}
+                              {% if tree_origin == "all_notes" %}data-delete-page="{{ page_obj.number }}" data-delete-sort="{{ sort }}"{% endif %}>Move to Trash</button>
+                    </div>
+                  </details>
+                </div>
+              </li>
+            {% empty %}
+              <li class="tree-nav__empty">No unfiled notes.</li>
+            {% endfor %}
+          </ul>
+        </details>
+      </li>
+    </ul>
+
+    {% if not folders %}
+      <p class="tree-nav__empty tree-nav__empty--no-folders">No folders yet.</p>
+    {% endif %}
+
+    <p class="tree-nav__empty tree-nav__empty--filtered" data-tree-filter-empty hidden>No matching notes.</p>
+    {% comment %}
+    A synchronous,
+    non-deferred anti-flash bootstrap -- mirrors base.html's own theme
+    anti-flash script and `_workspace_tree_rail.html`'s collapsed-tree one.
+    Restores this specific tree copy's own scroll position (captured live by
+    `tree-scroll-position.ts` on every `scroll` event, stored in
+    `sessionStorage`, separately for the wide desktop copy and the narrow
+    drawer copy via `data-tree-scope`) before `app.js` (a `defer`red module
+    script) can run -- without this, the viewport would first paint at
+    `scrollTop: 0` and only jump to the restored position afterward, a
+    visible flicker.
+
+    Placed as the LAST child of `.tree-nav__viewport`, not immediately
+    before it: a non-`async`/`defer` `<script>` executes synchronously
+    the instant the parser reaches it, *before* the parser has read any
+    markup that comes after it in the source -- so a script placed just
+    before the viewport's own opening tag would find `nextElementSibling`
+    still `null` (the browser hasn't parsed that far yet): the restore
+    would silently no-op every time, so the later
+    active-row reveal always started from `scrollTop: 0` and pushed the
+    active row to the viewport's bottom edge on every navigation.
+    `document.currentScript.parentElement` has no such problem -- the
+    viewport's own opening tag was parsed (and the element inserted into
+    the DOM) before any of its children, this script included, so the
+    parent reference is valid the instant this script runs, regardless of
+    how much list content sits between the opening tag and this point.
+
+    Deliberately duplicates `tree-scroll-position.ts`'s
+    `parseStoredScrollTop` validation rule (non-numeric or negative
+    degrades to "do nothing") rather than trying to share it: a module
+    import cannot run this early, and the rule itself is simple and
+    stable enough that keeping this bootstrap self-contained, like every
+    other anti-flash script in this codebase, outweighs the cost of the
+    one small duplicated check.
+    {% endcomment %}
+    <script>(function(){try{var viewport=document.currentScript.parentElement;var container=document.currentScript.closest(".tree-nav");if(!container||!viewport){return;}var key="ridgenote.tree.scrollTop."+(container.getAttribute("data-tree-scope")==="drawer"?"drawer":"wide");var raw=window.sessionStorage.getItem(key);var value=(raw===null||raw.trim()==="")?NaN:Number(raw);if(Number.isFinite(value)&&value>=0){viewport.scrollTop=value;}}catch(e){}})();</script>
+  </div>
+
+  {% comment %}
+  Since the collapsed rail carries no
+  Trash icon of its own, this fixed row is the only Trash destination this
+  navigation surface offers -- dual-purpose (click navigates, drop moves
+  the dragged note/folder to Trash), identical in the wide tree and the
+  narrow drawer since both include this same partial. The visible label
+  stays "Trash" (the destination's name), but the accessible
+  name/tooltip is "Open Trash" -- what activating the link actually does.
+  {% endcomment %}
+  <div class="tree-nav__trash-destination">
+    <a class="tree-nav__trash-link{% if current_trash_active %} tree-nav__trash-link--active{% endif %}"
+       href="{% url 'notes:trash' %}"
+       data-tree-trash-target
+       {% if current_trash_active %}aria-current="page"{% endif %}
+       aria-label="Open Trash"
+       data-tooltip="Open Trash">
+      {% include "core/icons/trash.svg" %}
+      <span class="tree-nav__label">Trash</span>
+    </a>
+  </div>
+</div>

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Trash - RidgeNote{% endblock %}
+
+{% block main_class %}content-shell content-shell--workspace content-shell--trash{% endblock %}
+
+{% block content %}
+  <section class="workspace-shell workspace-shell--trash" data-tree-shell>
+    <div class="workspace-shell__layout">
+      {% include "notes/_workspace_tree_rail.html" with id_prefix="trash" %}
+      <section class="panel panel--trash trash-panel" aria-labelledby="trash-title">
+    <div class="panel-header panel-header--trash">
+      <div>
+        <h1 id="trash-title">Trash</h1>
+        <p class="muted">Notes and folders you delete move here first. Restore an item to bring it back.</p>
+      </div>
+      {% if show_empty_trash %}
+        <a class="button-link button-link--secondary" href="{% url 'notes:trash_empty' %}">Empty Trash</a>
+      {% endif %}
+    </div>
+
+    {% if has_hidden_recoverable_items %}
+      <p class="muted">
+        Some items are no longer visible in your Trash but may still be recoverable by a
+        RidgeNote administrator. Contact your administrator for help.
+      </p>
+    {% endif %}
+
+    {% if trashed_folders %}
+      <h2>Folders</h2>
+      <ul class="note-list note-list--trash note-list--trash-folders">
+        {% for row in trashed_folders %}
+          <li class="note-list__item trash-item" data-folder-id="{{ row.folder.id }}">
+            <div class="note-list__row">
+              <div class="note-list__content">
+                <div class="note-list__title-row">
+                  <span class="note-list__type">Folder</span>
+                  <span class="note-list__title">{{ row.folder.name }}</span>
+                </div>
+                <dl class="trash-item__lifecycle">
+                  <div class="trash-item__lifecycle-entry">
+                    <dt>Moved to Trash</dt>
+                    <dd>{{ row.moved_to_trash_at }}</dd>
+                  </div>
+                  <div class="trash-item__lifecycle-entry">
+                    <dt>Leaves your Trash</dt>
+                    <dd>{{ row.owner_visible_until }}</dd>
+                  </div>
+                </dl>
+                <div class="trash-item__footer">
+                  <dl class="trash-item__lifecycle trash-item__lifecycle--final">
+                    <div class="trash-item__lifecycle-entry trash-item__lifecycle-entry--emphasis">
+                      <dt>Final purge</dt>
+                      <dd>{{ row.final_purge_at }}</dd>
+                    </div>
+                  </dl>
+                  <div class="note-list__actions">
+                    <button type="button"
+                            class="button-link button-link--secondary"
+                            data-restore-trigger
+                            data-restore-kind="folder"
+                            data-restore-name="{{ row.folder.name }}"
+                            data-restore-count="{{ row.associated_note_count }}"
+                            data-restore-action="{% url 'notes:folder_restore' row.folder.id %}">Restore</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if trashed_notes %}
+      <h2>Notes</h2>
+      <ul class="note-list note-list--trash">
+        {% for row in trashed_notes %}
+          <li class="note-list__item trash-item" data-note-id="{{ row.note.id }}">
+            <div class="note-list__row">
+              <div class="note-list__content">
+                <div class="note-list__title-row">
+                  <span class="note-list__type">Note</span>
+                  <span class="note-list__title">{{ row.note.title }}</span>
+                </div>
+                <p class="note-list__meta">
+                  <span class="note-list__location">{% if row.note.folder %}From folder — {{ row.note.folder.name }}{% else %}Unfiled{% endif %}</span>
+                </p>
+                <dl class="trash-item__lifecycle">
+                  <div class="trash-item__lifecycle-entry">
+                    <dt>Moved to Trash</dt>
+                    <dd>{{ row.moved_to_trash_at }}</dd>
+                  </div>
+                  <div class="trash-item__lifecycle-entry">
+                    <dt>Leaves your Trash</dt>
+                    <dd>{{ row.owner_visible_until }}</dd>
+                  </div>
+                </dl>
+                <div class="trash-item__footer">
+                  <dl class="trash-item__lifecycle trash-item__lifecycle--final">
+                    <div class="trash-item__lifecycle-entry trash-item__lifecycle-entry--emphasis">
+                      <dt>Final purge</dt>
+                      <dd>{{ row.final_purge_at }}</dd>
+                    </div>
+                  </dl>
+                  <div class="note-list__actions">
+                    <form method="post" action="{% url 'notes:note_restore' row.note.id %}">
+                      {% csrf_token %}
+                      <button type="submit" class="button-link button-link--secondary">Restore</button>
+                    </form>
+                    <button type="button"
+                            class="button-link button-link--danger"
+                            data-delete-trigger
+                            data-delete-kind="note-permanent"
+                            data-delete-name="{{ row.note.title }}"
+                            data-delete-action="{% url 'notes:note_permanent_delete' row.note.id %}">Delete permanently</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if not trashed_folders and not trashed_notes %}
+      <div class="empty-state empty-state--compact">
+        <h2>Trash is empty</h2>
+        <p>Notes and folders you delete will appear here until you restore them.</p>
+      </div>
+    {% endif %}
+      </section>
+    </div>
+  </section>
+
+  {% include "notes/_nav_drawer.html" %}
+{% endblock %}

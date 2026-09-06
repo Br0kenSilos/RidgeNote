@@ -1,0 +1,23 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+<div class="user-create-page">
+  <h1>Create User</h1>
+  <form method="post" data-setup-method-form>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      {% if field.name == "send_invitation" %}
+        {% if smtp_configured %}
+          {% include "accounts/_form_field.html" with extra_attrs="data-invitation-field-row" %}
+        {% endif %}
+      {% elif field.name == "password1" or field.name == "password2" or field.name == "require_password_change" %}
+        {% include "accounts/_form_field.html" with extra_attrs="data-password-field-row" %}
+      {% else %}
+        {% include "accounts/_form_field.html" %}
+      {% endif %}
+    {% endfor %}
+    <button type="submit">Create User</button>
+  </form>
+</div>
+{% endblock %}

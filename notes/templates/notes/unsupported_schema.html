@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Unsupported Note - RidgeNote{% endblock %}
+
+{% block content %}
+  <section class="panel" aria-labelledby="unsupported-title">
+    <p class="eyebrow">Recovery</p>
+    <h1 id="unsupported-title">This note uses an unsupported document version.</h1>
+    <p>The note is read-only in this RidgeNote version. Editing and printing are disabled until document compatibility is restored.</p>
+    <p><strong>{{ note.title }}</strong></p>
+    <div class="button-row">
+      <a class="button-link" href="{% url 'notes:export' note.id %}">Download Canonical JSON</a>
+      <a class="button-link button-link--secondary" href="{% url 'home' %}">Back to Notes</a>
+    </div>
+  </section>
+{% endblock %}

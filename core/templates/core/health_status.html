@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="panel" aria-labelledby="status-title">
+    <p class="eyebrow">Status</p>
+    <h1 id="status-title">RidgeNote is running.</h1>
+    <p>
+      Django rendered this page, PostgreSQL answered the database probe
+      with <strong>{{ database_probe }}</strong>, and compiled static assets loaded.
+    </p>
+    <p class="asset-check" data-ridgenote-static-check>Static check pending</p>
+  </section>
+{% endblock %}

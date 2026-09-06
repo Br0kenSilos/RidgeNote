@@ -1,0 +1,88 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <div class="preferences-page">
+    <h1>Preferences</h1>
+
+    <section class="preferences-section" aria-labelledby="preferences-timezone-heading" data-preferences-timezone-root>
+      <h2 id="preferences-timezone-heading">Timezone</h2>
+      <p class="muted">
+        Used for backup filenames and other user-specific display. RidgeNote
+        stores authoritative timestamps internally in UTC.
+      </p>
+      {% if request.user.timezone_name %}
+        <p>Current timezone: {{ request.user.timezone_name }}</p>
+      {% else %}
+        <p>
+          No timezone is saved. RidgeNote is currently using the
+          application fallback timezone: <strong>{{ effective_timezone }}</strong>.
+        </p>
+      {% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="preferences_action" value="timezone">
+        {% for field in timezone_form %}
+          {% include "accounts/_form_field.html" with hide_visible_errors=True %}
+        {% endfor %}
+        <datalist id="timezone-options">
+          {% for zone in timezone_options %}
+            <option value="{{ zone }}"></option>
+          {% endfor %}
+        </datalist>
+        <div class="preferences-actions">
+          <button type="button" data-preferences-timezone-detect>Use browser timezone</button>
+          <button type="submit">Save</button>
+        </div>
+        <div class="visually-hidden" aria-live="polite" data-preferences-timezone-status></div>
+      </form>
+    </section>
+
+    <section class="preferences-section" aria-labelledby="preferences-tags-heading">
+      <h2 id="preferences-tags-heading">Tags</h2>
+      <form method="post" class="preferences-tags-form">
+        {% csrf_token %}
+        <input type="hidden" name="preferences_action" value="tags">
+        <div class="preferences-tags-form__controls">
+          <span class="preferences-tags-form__checkbox">
+            {{ tags_form.tag_uppercase_enabled }}
+            <label for="{{ tags_form.tag_uppercase_enabled.id_for_label }}">Uppercase tag names</label>
+          </span>
+          <span class="preferences-tags-form__checkbox">
+            {{ tags_form.tag_semantic_color_enabled }}
+            <label for="{{ tags_form.tag_semantic_color_enabled.id_for_label }}">Use semantic tag colors</label>
+          </span>
+          <span class="preferences-tags-form__color-field">
+            <label for="{{ tags_form.tag_default_color.id_for_label }}">Default color:</label>
+            {{ tags_form.tag_default_color }}
+          </span>
+          <button type="submit" class="button-link">Save</button>
+        </div>
+        {% if tags_form.errors %}
+          <div class="visually-hidden">{{ tags_form.errors }}</div>
+        {% endif %}
+      </form>
+      <p class="muted">
+        Rename, recolor, or delete tags, and see how many notes use each
+        one, in <a href="{% url 'accounts:tag_management' %}">Tag manager</a>.
+      </p>
+    </section>
+
+    <section class="preferences-section" aria-labelledby="preferences-appearance-heading">
+      <h2 id="preferences-appearance-heading">Appearance</h2>
+      <form method="post" class="preferences-appearance-form">
+        {% csrf_token %}
+        <input type="hidden" name="preferences_action" value="appearance">
+        <div class="preferences-appearance-form__controls">
+          <span class="preferences-appearance-form__field">
+            <label for="{{ appearance_form.theme.id_for_label }}">Theme</label>
+            {{ appearance_form.theme }}
+          </span>
+          <button type="submit" class="button-link">Save</button>
+        </div>
+        {% if appearance_form.errors %}
+          <div class="visually-hidden">{{ appearance_form.errors }}</div>
+        {% endif %}
+      </form>
+    </section>
+  </div>
+{% endblock %}

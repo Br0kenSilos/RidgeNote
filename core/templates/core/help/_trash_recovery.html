@@ -1,0 +1,133 @@
+<section aria-labelledby="help-trash-recovery" data-help-topic="help-trash-recovery">
+  <h2 id="help-trash-recovery">Trash and Recovery</h2>
+
+  <p>
+    Moving a note or folder to <strong>Trash</strong> does not
+    immediately delete it. RidgeNote keeps deleted items recoverable
+    for a period of time so you have a chance to change your mind.
+  </p>
+
+  <h3>Your Trash</h3>
+  <p>
+    Open <strong>View My Trash</strong> from the account menu to see
+    the notes and folders you have deleted.
+  </p>
+  <p>
+    For the first <strong>30 days</strong> after deletion, an item
+    remains visible in your Trash and you can restore it yourself.
+  </p>
+  <p>Select <strong>Restore</strong> to return the item to your library.</p>
+  <p>
+    If you restore a folder, RidgeNote also restores the notes that
+    were moved to Trash with that folder, as long as each note is still
+    eligible for recovery. See
+    <a href="{% url 'help' %}#help-folders" data-help-topic-link>Folders</a>
+    for more about folder Trash behavior.
+  </p>
+
+  <h3>Restore conflicts</h3>
+  <p>
+    Restoring a note normally does not create a naming conflict.
+    RidgeNote allows more than one note to have the same title.
+  </p>
+  <p>
+    If a note's original folder is still available, the note is
+    restored there. If that folder has since been moved to Trash,
+    RidgeNote restores the note into your
+    <strong>Recovered Items</strong> folder instead and tells you what
+    happened.
+  </p>
+  <p>
+    Folder restores work a little differently because active folder
+    names must be unique.
+  </p>
+  <p>
+    For example, suppose you move a folder named
+    <strong>PROJECTS</strong> to Trash and later create a new active
+    folder named <strong>PROJECTS</strong>. If you try to restore the
+    original folder, RidgeNote will not overwrite the newer folder,
+    merge the two, or silently rename either one.
+  </p>
+  <p>
+    Instead, the restore is stopped and RidgeNote tells you that an
+    active folder with that name already exists. The original folder
+    remains safely in Trash until the conflict is resolved.
+  </p>
+  <p>
+    Folder-name matching is not case-sensitive, so
+    <strong>PROJECTS</strong> and <strong>Projects</strong> are
+    considered the same name for this purpose.
+  </p>
+
+  <h3>Empty Trash</h3>
+  <p><strong>Empty Trash</strong> immediately removes the items from your own Trash view.</p>
+  <p>It does <strong>not</strong> permanently delete them at that moment.</p>
+  <p>
+    Instead, those items move directly into RidgeNote's
+    administrator-recovery stage, where they can still be recovered by
+    an administrator until the final recovery period expires.
+  </p>
+  <p>
+    Use Empty Trash when you no longer want deleted items appearing in
+    your own Trash but still want RidgeNote's recovery protection to
+    remain in place.
+  </p>
+
+  <h3>Administrator Recovery</h3>
+  <p>
+    After an item leaves your own Trash -- either because
+    <strong>30 days</strong> have passed or because you used
+    <strong>Empty Trash</strong> -- you can no longer restore it
+    yourself.
+  </p>
+  <p>
+    The item remains available through
+    <strong>Administrator Recovery</strong> until
+    <strong>90 days after its original deletion date</strong>.
+  </p>
+  <p>
+    If you need something restored during this period, contact a
+    RidgeNote administrator.
+  </p>
+  <p>
+    When requesting a restore, provide as much information as you
+    remember about the item, such as its title, approximate deletion
+    date, or the folder it came from. This helps the administrator
+    identify the correct item.
+  </p>
+  <p>
+    Items restored for you by an administrator may be returned to their
+    original folder when possible. If a note's original folder is no
+    longer available, RidgeNote places it in a
+    <strong>Recovered Items</strong> folder instead.
+  </p>
+  <p>
+    <strong>Privacy note:</strong> Administrators cannot read the
+    contents of your deleted notes through Administrator Recovery. They
+    can see limited identifying information, such as the note title and
+    deletion date, so they can locate and restore the item you request.
+    This is another reason a descriptive title can be helpful when
+    asking for a recovery.
+  </p>
+
+  <h3>Final purge</h3>
+  <p>
+    Once an item reaches <strong>90 days from its original deletion
+    date</strong>, RidgeNote permanently removes it from the Trash and
+    Administrator Recovery system.
+  </p>
+  <p>
+    After that point, it can no longer be restored through RidgeNote's
+    recovery tools.
+  </p>
+  <p>
+    Because Trash is intended primarily to protect against accidental
+    deletion -- not to serve as your only backup -- you should also keep
+    periodic <strong>Library Backups</strong> of information you do not
+    want to lose.
+  </p>
+  <p>
+    See <a href="{% url 'help' %}#help-library-backup" data-help-topic-link>Library Backup and Restore</a>
+    for more information.
+  </p>
+</section>

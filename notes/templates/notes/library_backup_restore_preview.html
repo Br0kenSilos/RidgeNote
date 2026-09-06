@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Library restore preview - RidgeNote{% endblock %}
+
+{% block content %}
+  <section class="library-restore-preview" aria-labelledby="library-restore-preview-heading" data-library-restore-root>
+    <h1 id="library-restore-preview-heading">Library restore preview</h1>
+
+    {% comment %}
+    This <form> is the single,
+    persistent, never-replaced shell for the entire flow -- its file
+    input is the one browser-held File selection used for both the
+    async validation request and, later, the final destructive
+    restore POST (submitted via the dialog's phrase field/button
+    below, both associated with this same form via form="..."). Do
+    not replace this form or its file input when injecting the
+    validation result -- see library-restore.ts's own comment on
+    why.
+    {% endcomment %}
+    <form id="library-restore-form" method="post" enctype="multipart/form-data"
+          action="{% url 'notes:library_backup_restore_preview' %}"
+          data-library-restore-form
+          data-validate-url="{% url 'notes:library_backup_restore_preview' %}"
+          data-restore-url="{% url 'notes:library_backup_restore' %}"
+          data-home-url="{% url 'home' %}">
+      {% csrf_token %}
+
+      <div class="library-restore-instructions" aria-live="polite">
+        <div data-library-restore-initial-instructions{% if preview %} hidden{% endif %}>
+          <p>Select a RidgeNote library backup ZIP file to validate / restore.</p>
+          <p class="library-restore-form__hint">The maximum file size allowed is 200 MiB.</p>
+          <p>
+            <strong>NOTE:</strong> Validating a backup does not modify your
+            current library, and no restore occurs until you explicitly
+            confirm a restore is desired. The uploaded file is processed
+            temporarily and is not retained after validation.
+          </p>
+        </div>
+        <div data-library-restore-validated-instructions{% if not preview %} hidden{% endif %}>
+          <h2>Backup validated</h2>
+          <p>
+            The backup file
+            <strong class="library-restore-instructions__filename"
+                    data-library-restore-validated-filename></strong>
+            has been validated as a valid RidgeNote library backup.
+          </p>
+          <p>
+            Review the summary below to see how it compares with your
+            current library. You may also select a different backup file
+            to validate and potentially restore.
+          </p>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="id_backup_file">Backup file</label>
+        <input type="file" name="backup_file" accept=".zip" id="id_backup_file"
+               data-library-restore-file-input>
+      </div>
+      <button type="button" data-library-restore-validate-button>Validate backup and preview</button>
+    </form>
+
+    <div data-library-restore-result-region aria-live="polite">
+      {% if preview %}
+        <div data-library-restore-validated="true">
+          <section aria-labelledby="library-restore-preview-summary-heading">
+            <h2 id="library-restore-preview-summary-heading">Backup ZIP file summary</h2>
+            <dl>
+              <dt>Format version</dt>
+              <dd>{{ preview.format_version }}</dd>
+              <dt>Generated</dt>
+              <dd>{{ preview.exported_at }}</dd>
+              <dt>Compressed size</dt>
+              <dd>{{ preview.compressed_size|filesizeformat }}</dd>
+              <dt>Uncompressed size</dt>
+              <dd>{{ preview.actual_uncompressed_size|filesizeformat }}</dd>
+              <dt>Entries</dt>
+              <dd>{{ preview.entry_count }}</dd>
+            </dl>
+          </section>
+
+          <section aria-labelledby="library-restore-preview-comparison-heading">
+            <h2 id="library-restore-preview-comparison-heading">
+              Backup contents compared with your current library
+            </h2>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col"></th>
+                  <th scope="col">Current library</th>
+                  <th scope="col">This backup</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Folders</th>
+                  <td>{{ current.folder_count }}</td>
+                  <td>{{ preview.folder_count }}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Tags</th>
+                  <td>{{ current.tag_count }}</td>
+                  <td>{{ preview.tag_count }}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Total notes</th>
+                  <td>{{ current.note_count }}</td>
+                  <td>{{ preview.note_count }}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Active notes</th>
+                  <td>{{ current.active_note_count }}</td>
+                  <td>{{ preview.active_note_count }}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Trash notes</th>
+                  <td>{{ current.trash_note_count }}</td>
+                  <td>{{ preview.trash_note_count }}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Recovery notes</th>
+                  <td>{{ current.recovery_note_count }}</td>
+                  <td>{{ preview.recovery_note_count }}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Pinned notes</th>
+                  <td>{{ current.pinned_note_count }}</td>
+                  <td>{{ preview.pinned_note_count }}</td>
+                </tr>
+                <tr>
+                  <th scope="row">Unfiled notes</th>
+                  <td>{{ current.unfiled_note_count }}</td>
+                  <td>{{ preview.unfiled_note_count }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+      {% elif error_message %}
+        <p class="library-restore-error" data-library-restore-error="true">{{ error_message }}</p>
+      {% endif %}
+    </div>
+
+    <div class="library-restore-decision" data-library-restore-decision hidden>
+      <h2>Restore this backup?</h2>
+      <p>
+        Review the comparison table above. If this is the backup you want
+        to restore, click Continue. Otherwise, click Cancel.
+      </p>
+      <div class="library-restore-decision__actions">
+        <button type="button" data-library-restore-decision-continue>Continue</button>
+        <button type="button" data-library-restore-decision-cancel>Cancel</button>
+      </div>
+    </div>
+
+    <dialog id="library-restore-confirm-dialog" class="library-restore-dialog"
+            aria-labelledby="library-restore-confirm-title" data-library-restore-dialog>
+      <h2 id="library-restore-confirm-title">Restore library backup</h2>
+      <p>
+        Backup file:
+        <strong class="library-restore-dialog__filename" data-library-restore-filename></strong>
+      </p>
+
+      <div data-library-restore-dialog-body>
+        <p class="library-restore-dialog__warning">
+          <strong>WARNING:</strong> This is <strong>NOT</strong> a data
+          merge. This action will <strong>REPLACE</strong> and
+          <strong>OVERWRITE</strong> your current RidgeNote library. All
+          content in your current library that is not present within
+          this backup file will be removed. We recommend that you
+          download a backup of your current library before proceeding
+          with the restore.
+        </p>
+        <p>
+          <a href="{% url 'notes:library_backup_download' %}" target="_blank" rel="noopener">
+            Download current library backup
+          </a>
+        </p>
+        <p class="library-restore-dialog__note">
+          <strong>NOTE:</strong> This action affects only the data in
+          <strong>YOUR</strong> library. It does not affect the libraries
+          of other users. Your account credentials, password, session,
+          audit history, and RidgeNote server configuration are not
+          replaced and will remain unchanged.
+        </p>
+
+        <div class="library-restore-dialog__actions" data-library-restore-are-you-sure>
+          <p><strong>Do you wish to proceed?</strong></p>
+          <button type="button" data-library-restore-confirm-yes>Yes</button>
+          <button type="button" data-library-restore-confirm-no>No</button>
+        </div>
+
+        <div class="library-restore-dialog__phrase" data-library-restore-phrase-section hidden>
+          <label for="library-restore-phrase">Type REPLACE MY CURRENT LIBRARY to continue.</label>
+          <input type="text" id="library-restore-phrase" name="confirmation"
+                 form="library-restore-form" data-library-restore-phrase-input
+                 autocomplete="off" spellcheck="false">
+          <div class="library-restore-dialog__phrase-actions">
+            <button type="submit" form="library-restore-form" data-library-restore-submit disabled>
+              Restore library
+            </button>
+            <button type="button" data-library-restore-phrase-cancel>Cancel</button>
+          </div>
+        </div>
+
+        <p class="library-restore-dialog__error" data-library-restore-dialog-error hidden></p>
+      </div>
+
+      <div class="library-restore-dialog__success" data-library-restore-success hidden>
+        <p><strong>Library restored successfully.</strong></p>
+        <button type="button" data-library-restore-close>Close</button>
+      </div>
+    </dialog>
+  </section>
+{% endblock %}

@@ -1,0 +1,107 @@
+Sixteen icon partials in this directory are copied, unmodified in path
+geometry, from the Lucide icon project (https://lucide.dev):
+
+- note-new.svg   -- upstream Lucide icon "file-plus"    (ISC License)
+- folder-new.svg -- upstream Lucide icon "folder-plus"  (ISC License)
+- move.svg       -- upstream Lucide icon "folder-input" (ISC License)
+- sun.svg        -- upstream Lucide icon "sun"           (ISC License)
+- history.svg    -- upstream Lucide icon "history"       (ISC License)
+- pin.svg        -- upstream Lucide icon "pin"           (ISC License --
+  Milestone 8 Slice 5 replaced a prior hand-authored, non-Lucide asset
+  that used map/location-marker geometry, a misleading metaphor for a
+  note-pinning toggle; this partial now carries genuine upstream Lucide
+  thumbtack geometry instead. The same partial renders for both the
+  pinned and unpinned Home Pin/Unpin toggle states, distinguished by a
+  filled-icon and active-button treatment; see `.note-list__pin-toggle--active`
+  in app.css.)
+- trash.svg      -- upstream Lucide icon "trash-2"       (MIT License --
+  also listed by Lucide's own upstream LICENSE file as Feather-derived;
+  see the Feather MIT License section below.)
+- bold.svg          -- upstream Lucide icon "bold"          (ISC License --
+  Milestone 8 Slice 8, note-detail formatting toolbar icon conversion.)
+- italic.svg        -- upstream Lucide icon "italic"        (MIT License --
+  Feather-derived, Milestone 8 Slice 8.)
+- underline.svg     -- upstream Lucide icon "underline"     (ISC License --
+  Milestone 8 Slice 8.)
+- list.svg          -- upstream Lucide icon "list"          (ISC License --
+  Milestone 8 Slice 8, note-detail formatting toolbar's Bulleted list
+  command.)
+- list-ordered.svg  -- upstream Lucide icon "list-ordered"  (ISC License --
+  Milestone 8 Slice 8, note-detail formatting toolbar's Numbered list
+  command.)
+- link.svg          -- upstream Lucide icon "link"          (MIT License --
+  Feather-derived, Milestone 8 Slice 8.)
+- undo-2.svg        -- upstream Lucide icon "undo-2"        (ISC License --
+  Milestone 8 Slice 8; the curved-arrow variant was chosen over Lucide's
+  plainer "undo" glyph as the clearer editor-toolbar convention.)
+- redo-2.svg        -- upstream Lucide icon "redo-2"        (ISC License --
+  Milestone 8 Slice 8, paired with undo-2.svg above.)
+- chevrons-right.svg -- upstream Lucide icon "chevrons-right" (ISC License --
+  Milestone 11 Slice 12, the collapsed workspace rail's tree reveal/hide
+  toggle. The same partial renders both states -- CSS rotates it 180deg
+  once the tree is expanded, rather than swapping in a second icon.)
+
+Confirmed directly against Lucide's upstream LICENSE file at the time
+each icon was added -- note-new.svg, folder-new.svg, move.svg, sun.svg,
+history.svg, pin.svg, bold.svg, underline.svg, list.svg, list-ordered.svg,
+undo-2.svg, redo-2.svg, and chevrons-right.svg are not in that
+Feather-derived list. italic.svg and link.svg are both explicitly listed
+there, so they carry Feather's original MIT terms rather than Lucide's
+own ISC terms.
+
+Only presentation attributes were adjusted (aria-hidden="true",
+focusable="false", and removal of the literal width/height attributes,
+which RidgeNote's shared .icon-button CSS already controls); the SVG path
+data itself is unmodified from upstream.
+
+No Lucide package or CDN is used at build or runtime -- these are
+repository-owned, static, inline SVG partials rendered via Django's
+{% include %}, exactly like RidgeNote's other hand-authored icons in this
+directory.
+
+---
+
+ISC License (Lucide Icons and Contributors -- applies to note-new.svg,
+folder-new.svg, move.svg, sun.svg, history.svg, pin.svg, bold.svg,
+underline.svg, list.svg, list-ordered.svg, undo-2.svg, redo-2.svg, and
+chevrons-right.svg)
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+---
+
+MIT License (Feather -- applies to trash.svg, italic.svg, and link.svg,
+since Lucide's own upstream LICENSE lists "trash-2", "italic", and
+"link" as derived from Feather)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

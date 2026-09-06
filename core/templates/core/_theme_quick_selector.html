@@ -1,0 +1,54 @@
+{% comment %}
+A directly visible,
+compact top-bar theme control -- the account menu's own copy (still
+present in the narrow drawer as its narrow fallback, see
+`notes/_nav_drawer.html`) no longer duplicates this at the header
+level. Shared between `base.html`'s default header and
+`notes/detail.html`'s workspace header (never rendered by both at
+once, since one always overrides the other's `app_header` block) so
+the two never drift apart.
+
+Reuses `.account-menu`'s own `<details>` popover mechanics verbatim --
+`initAccountMenus()` (app.ts) already targets every `.account-menu`
+generically, so this control's own outside-click/Escape-to-close
+behavior needs no new JS at all, only this markup.
+
+Uses `sun.svg` rather than `contrast.svg`
+(both already-vendored Lucide icons, same sourcing convention --
+`sun.svg` was unused elsewhere in the app). At the actual compact
+top-bar size, `contrast`'s circle-plus-inner-arc read as an ambiguous
+dot rather than anything theme-related; `sun`'s distinct rayed-circle
+shape stays legible that small and is the icon most commonly
+recognized as an appearance/display control. `moon` was considered
+and rejected here specifically because a single crescent reads as a
+binary light/dark toggle, which would misrepresent this control --
+selecting from a named list of themes, not flipping one state, is
+still the actual interaction (unchanged from the reasoning that
+originally picked `contrast`). Trigger behavior, tooltip, and
+accessible label are unchanged.
+{% endcomment %}
+<details class="account-menu theme-quick-menu">
+  <summary class="icon-button theme-quick-menu__trigger"
+           aria-label="Appearance"
+           data-tooltip="Appearance">{% include "core/icons/sun.svg" %}</summary>
+  <div class="theme-quick-menu__dropdown" data-theme-quick-group>
+    <span class="theme-quick-menu__label" id="theme-quick-menu-label">Appearance</span>
+    <form method="post"
+          action="{% url 'accounts:quick_set_theme' %}"
+          class="theme-quick-menu__form"
+          data-theme-quick-form
+          aria-labelledby="theme-quick-menu-label">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}">
+      {% for value, label in RIDGENOTE_THEME_CHOICES %}
+        <button type="submit"
+                name="theme"
+                value="{{ value }}"
+                class="theme-quick-menu__option"
+                data-theme-quick-option="{{ value }}"
+                {% if request.user.theme == value %}aria-current="true"{% endif %}>{{ label }}</button>
+      {% endfor %}
+      <span class="visually-hidden" aria-live="polite" data-theme-quick-status></span>
+    </form>
+  </div>
+</details>

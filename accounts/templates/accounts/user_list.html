@@ -1,0 +1,58 @@
+{% extends "accounts/base.html" %}
+
+{% block main_class %}content-shell content-shell--user-list{% endblock %}
+
+{% block content %}
+  <div class="user-list-page">
+    <h1>Users</h1>
+    <p><a href="{% url 'accounts:user_create' %}">Create user</a></p>
+    <div class="user-list-page__table-scroll">
+      <table class="user-list-page__table" role="table">
+        <colgroup>
+          <col class="user-list-page__col--name">
+          <col class="user-list-page__col--username">
+          <col class="user-list-page__col--email">
+          <col class="user-list-page__col--role">
+          <col class="user-list-page__col--status">
+          <col class="user-list-page__col--password">
+          <col class="user-list-page__col--lockout">
+          <col class="user-list-page__col--deletion">
+        </colgroup>
+        <thead role="rowgroup">
+          <tr role="row">
+            <th scope="col" role="columnheader">Name</th>
+            <th scope="col" role="columnheader">Username</th>
+            <th scope="col" role="columnheader">Email</th>
+            <th scope="col" role="columnheader">Role</th>
+            <th scope="col" role="columnheader">Status</th>
+            <th scope="col" role="columnheader">Password change</th>
+            <th scope="col" role="columnheader">Lockout</th>
+            <th scope="col" role="columnheader">Deletion</th>
+          </tr>
+        </thead>
+        <tbody role="rowgroup">
+          {% for user in users %}
+            <tr role="row"{% if user.account_status_label == "Disabled" or user.is_locked or user.deletion_status.is_pending %} class="user-list-page__row--attention"{% endif %}>
+              <td role="cell" class="user-list-page__cell--name"><a href="{% url 'accounts:user_detail' user.id %}">{{ user.display_label }}</a></td>
+              <td role="cell" class="user-list-page__cell--username">{{ user.username }}</td>
+              <td role="cell" class="user-list-page__cell--email">{{ user.email|default:"Not set" }}</td>
+              <td role="cell" class="user-list-page__cell--role">{{ user.role }}</td>
+              <td role="cell" class="user-list-page__cell--status">{{ user.account_status_label }}{% if user.account_status_detail %} · {{ user.account_status_detail }}{% endif %}</td>
+              <td role="cell" class="user-list-page__cell--password" data-label="Password">{% if user.must_change_password %}Required{% else %}Not required{% endif %}</td>
+              <td role="cell" class="user-list-page__cell--lockout" data-label="Lockout">{% if user.is_locked %}Locked until {{ user.locked_until }}{% else %}Not locked{% endif %}</td>
+              <td role="cell" class="user-list-page__cell--deletion" data-label="Deletion">
+                {% if user.deletion_status.is_pending %}
+                  {% if user.deletion_status.is_purge_eligible %}
+                    Pending — purge eligible
+                  {% else %}
+                    Pending — recoverable
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

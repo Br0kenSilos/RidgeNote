@@ -1,0 +1,57 @@
+{% comment %}
+Single shared content source: included, unchanged, by both the
+canonical standalone /help/ page (core/templates/core/help/page.html)
+and the global Help dialog (core/templates/base.html). Never
+duplicated -- see base.html's help_dialog block for how the standalone
+page suppresses the dialog entirely instead of rendering a second copy
+of this partial on the same document.
+
+This file is purely the .help-layout wrapper -- TOC/navigation plus
+includes of one topic partial per major Help topic
+(core/templates/core/help/_<topic>.html), in the intended ten-topic
+order (Introduction first, Getting Started second). Each topic partial
+owns its own stable id/heading/content; no topic prose lives here.
+
+Every link below (TOC and any topic partial's own inline
+cross-references) is a real, canonical /help/#<id> href -- usable as an
+ordinary link with no JS, and recognized by initHelpPanel() (app.ts)
+for in-modal topic switching when JS is active. The canonical page
+itself never applies topic show/hide (see app.ts's own comment on
+why) -- it always renders as one complete linear document; only the
+JS-opened dialog ever shows a single selected topic at a time,
+defaulting to Introduction (DEFAULT_HELP_TOPIC in app.ts).
+{% endcomment %}
+<div class="help-layout">
+  <h2 id="help-toc-heading" class="visually-hidden">Help contents</h2>
+  <nav class="help-toc" aria-labelledby="help-toc-heading">
+    <ul class="help-toc__list">
+      <li><a href="{% url 'help' %}#help-introduction" data-help-topic-link>Introduction</a></li>
+      <li><a href="{% url 'help' %}#help-getting-started" data-help-topic-link>Getting Started</a></li>
+      <li><a href="{% url 'help' %}#help-notes" data-help-topic-link>Notes</a></li>
+      <li><a href="{% url 'help' %}#help-folders" data-help-topic-link>Folders</a></li>
+      <li><a href="{% url 'help' %}#help-tags" data-help-topic-link>Tags</a></li>
+      <li><a href="{% url 'help' %}#help-search" data-help-topic-link>Search</a></li>
+      <li><a href="{% url 'help' %}#help-trash-recovery" data-help-topic-link>Trash and Recovery</a></li>
+      <li><a href="{% url 'help' %}#help-library-backup" data-help-topic-link>Library Backup and Restore</a></li>
+      <li><a href="{% url 'help' %}#help-account-preferences" data-help-topic-link>Account and Preferences</a></li>
+      {% if request.user.is_ridgenote_admin %}
+        <li><a href="{% url 'help' %}#help-administrators" data-help-topic-link>For Administrators</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+
+  <div class="help-article">
+    {% include "core/help/_introduction.html" %}
+    {% include "core/help/_getting_started.html" %}
+    {% include "core/help/_notes.html" %}
+    {% include "core/help/_folders.html" %}
+    {% include "core/help/_tags.html" %}
+    {% include "core/help/_search.html" %}
+    {% include "core/help/_trash_recovery.html" %}
+    {% include "core/help/_library_backup.html" %}
+    {% include "core/help/_account_preferences.html" %}
+    {% if request.user.is_ridgenote_admin %}
+      {% include "core/help/_administrators.html" %}
+    {% endif %}
+  </div>
+</div>

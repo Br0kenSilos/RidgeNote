@@ -1,0 +1,32 @@
+{% comment %}
+All Notes' tag-chip markup, reused on
+Home's Recent rows -- read-only, no assignment/removal
+controls, identical to the original All Notes presentation. Expects
+`note` in context.
+
+No
+`data-tooltip`/`tabindex` is rendered here -- a character-count estimate
+of "will this truncate" was rejected as unreliable (proportional fonts,
+zoom, per-theme metrics). `tag-chip-truncation.ts` decides this
+correctly after real layout, from each chip's own label element (see
+below), and sets/clears both attributes on the outer chip to match --
+see that file's own comment for the full contract. This partial's only
+job is to render the plain chip; truncation state is never guessed here.
+
+The tag name sits in its own
+inner `.note-list__tag-chip__label` span, not directly in the outer
+`.note-list__tag-chip`. The outer element is the tooltip's positioning
+anchor and must not itself clip content (`overflow: visible`, app.css);
+the inner label is the one element that actually clips/ellipsizes long
+text (`overflow: hidden`). Splitting these two responsibilities is what
+lets the tooltip render outside the chip's own bounds instead of being
+clipped by the same box it needs to escape -- see app.css's own comment
+on `.note-list__tag-chip` for the full explanation.
+{% endcomment %}
+{% if note.tags.all %}
+  <span class="note-list__tags">
+    {% for tag in note.tags.all %}
+      <span class="note-list__tag-chip" data-tag-color="{{ tag.color }}"><span class="note-list__tag-chip__label">{{ tag.name }}</span></span>
+    {% endfor %}
+  </span>
+{% endif %}

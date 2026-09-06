@@ -1,0 +1,183 @@
+{% load static %}
+<!doctype html>
+<html lang="en" {% block html_attrs %}data-theme="{{ RIDGENOTE_CURRENT_THEME }}"{% endblock %}>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}RidgeNote{% endblock %}</title>
+    {% comment %}
+    PNG-only favicon, not SVG. An SVG
+    favicon fetches correctly in every automated check (200, correct
+    content-type, zero errors) but Firefox never visibly paints it in
+    the tab -- reproduced even in a brand-new profile with cache
+    cleared, ruling out stale-cache theories. Disabling
+    the SVG declaration and offering only this mechanically derived PNG
+    makes the favicon appear immediately in Firefox, and it also renders
+    correctly in Edge/Chromium. Mechanically rendered from
+    `core/templates/branding/ridgenote-mark.svg`'s exact geometry
+    (Chromium's own SVG rasterizer, 32x32, transparent background) --
+    not redrawn, not a different mark. No theme-specific favicon
+    variants.
+    {% endcomment %}
+    <link rel="icon" type="image/png" href="{% static 'core/img/favicon-32.png' %}" sizes="32x32">
+    <link rel="stylesheet" href="{% static 'core/dist/assets/app.css' %}">
+    <script type="module" src="{% static 'core/dist/assets/app.js' %}" defer></script>
+  </head>
+  {% comment %}
+  `data-theme` is rendered
+  on both `<html>` and `<body>` from the exact same
+  `RIDGENOTE_CURRENT_THEME` context value (see
+  `accounts.context_processors.theme_choices`) -- `<html>` (`:root`) is
+  the canonical/authoritative element, since its own `background:
+  var(--color-bg-app)` declaration (and every `[data-theme="..."]`
+  token override) only ever resolves against an attribute on `<html>`
+  itself, never one merely inherited from a descendant; `<body>` keeps
+  carrying the identical value only for compatibility with any existing
+  `[data-theme="..."]`-scoped selector already written against it (all
+  of which are attribute-only, element-agnostic selectors, so they
+  match equally well via either ancestor). There is one server-side
+  resolution, not two independently-computed values that could drift.
+  {% endcomment %}
+  <body {% block body_attrs %}data-theme="{{ RIDGENOTE_CURRENT_THEME }}"{% endblock %}>
+    {% if request.user.is_authenticated %}
+      <script>document.documentElement.dataset.js="true";</script>
+    {% endif %}
+    <div class="app-shell">
+      {% block app_header %}
+        <header class="app-header" data-app-header data-workspace-header>
+          {% if request.user.is_authenticated %}
+            {% if nav_drawer_available %}
+              {% include "core/_drawer_trigger.html" %}
+            {% endif %}
+            <nav class="account-nav account-nav--left" aria-label="Primary navigation">
+              <a href="{% url 'home' %}">Home</a>
+            </nav>
+            <nav class="account-nav account-nav--center" aria-label="RidgeNote">
+              <a class="brand-link" href="{% url 'home' %}"><span class="brand-mark">{% include "branding/ridgenote-mark.svg" %}</span>RidgeNote</a>
+            </nav>
+            <nav class="account-nav account-nav--right" aria-label="Account navigation">
+              <details class="account-menu">
+                <summary class="account-menu__trigger">{{ request.user.display_label }}</summary>
+                <div class="account-menu__dropdown">
+                  <span class="account-menu__identity">Signed in as {{ request.user.display_label }}</span>
+                  <hr class="account-menu__divider">
+                  <a class="account-menu__item" href="{% url 'accounts:account' %}"{% if request.resolver_match.url_name == "account" %} aria-current="page"{% endif %}>Account</a>
+                  <a class="account-menu__item" href="{% url 'accounts:preferences' %}"{% if request.resolver_match.url_name == "preferences" %} aria-current="page"{% endif %}>Preferences</a>
+                  <a class="account-menu__item" href="{% url 'accounts:tag_management' %}"{% if request.resolver_match.url_name == "tag_management" %} aria-current="page"{% endif %}>Tag manager</a>
+                  <a class="account-menu__item" href="{% url 'notes:full_search' %}"{% if request.resolver_match.url_name == "full_search" %} aria-current="page"{% endif %}>Full Search</a>
+                  <a class="account-menu__item" href="{% url 'notes:library_backup_download' %}">
+                    Download library backup
+                  </a>
+                  {% include "notes/_account_menu_trash_items.html" %}
+                  <hr class="account-menu__divider">
+                  <form class="logout-form account-menu__signout" method="post" action="{% url 'accounts:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="account-menu__item account-menu__item--danger">Sign out</button>
+                  </form>
+                </div>
+              </details>
+              {% include "core/_theme_quick_selector.html" %}
+              <button type="button"
+                      class="global-search-trigger"
+                      data-global-search-toggle
+                      aria-expanded="false"
+                      aria-controls="global-search-panel">Search</button>
+              <a href="{% url 'help' %}"
+                 class="help-trigger"
+                 data-help-toggle
+                 aria-label="Help"
+                 aria-expanded="false"
+                 aria-controls="help-panel">?</a>
+            </nav>
+          {% else %}
+            <a class="brand-link" href="{% url 'home' %}"><span class="brand-mark">{% include "branding/ridgenote-mark.svg" %}</span>RidgeNote</a>
+          {% endif %}
+        </header>
+      {% endblock %}
+
+      <main class="{% block main_class %}content-shell{% endblock %}">
+        {% if messages %}
+          <ul class="messages" role="alert">
+            {% for message in messages %}
+              <li class="messages__item{% if message.level_tag %} messages__item--{{ message.level_tag }}{% endif %}{% if message.extra_tags %} {{ message.extra_tags }}{% endif %}">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    <dialog id="global-search-panel"
+            class="global-search-panel"
+            aria-label="Search"
+            data-global-search-url="{% url 'notes:global_search' %}">
+      <div class="global-search-panel__header">
+        <h2 class="global-search-panel__title">Search</h2>
+        <button type="button"
+                class="global-search-panel__close"
+                data-global-search-close
+                aria-label="Close Search">&#10005;</button>
+      </div>
+      <div class="global-search-panel__body">
+        <label class="visually-hidden" for="global-search-input">Search your notes</label>
+        <input type="text"
+               id="global-search-input"
+               class="global-search-panel__input"
+               data-global-search-input
+               placeholder="Search your notes"
+               autocomplete="off">
+        <ul class="global-search-panel__results" data-global-search-results></ul>
+      </div>
+    </dialog>
+    {% block help_dialog %}
+      <dialog id="help-panel" class="help-panel" aria-label="Help">
+        <div class="help-panel__header">
+          <h2 class="help-panel__title">Help</h2>
+          <button type="button"
+                  class="help-panel__close"
+                  data-help-close
+                  aria-label="Close Help">&#10005;</button>
+        </div>
+        <div class="help-panel__body">
+          {% include "core/help/_body.html" %}
+        </div>
+      </dialog>
+    {% endblock %}
+    <dialog id="delete-confirm-dialog"
+            class="delete-confirm-dialog"
+            aria-labelledby="delete-confirm-dialog-title">
+      <form method="post" data-delete-confirm-form>
+        {% csrf_token %}
+        <h2 id="delete-confirm-dialog-title" data-delete-confirm-title></h2>
+        <p data-delete-confirm-consequence></p>
+        <input type="hidden" name="origin" data-delete-confirm-field="origin">
+        <input type="hidden" name="current_note" data-delete-confirm-field="current_note">
+        <input type="hidden" name="page" data-delete-confirm-field="page">
+        <input type="hidden" name="sort" data-delete-confirm-field="sort">
+        <div class="delete-confirm-dialog__actions">
+          <button type="button"
+                  class="button-link button-link--secondary"
+                  data-delete-confirm-cancel>Cancel</button>
+          <button type="submit"
+                  class="button-link button-link--danger"
+                  data-delete-confirm-submit>Move to Trash</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="restore-confirm-dialog"
+            class="restore-confirm-dialog"
+            aria-labelledby="restore-confirm-dialog-title">
+      <form method="post" data-restore-confirm-form>
+        {% csrf_token %}
+        <h2 id="restore-confirm-dialog-title" data-restore-confirm-title></h2>
+        <p data-restore-confirm-consequence></p>
+        <input type="hidden" name="owner" data-restore-confirm-field="owner">
+        <div class="restore-confirm-dialog__actions">
+          <button type="button"
+                  class="button-link button-link--secondary"
+                  data-restore-confirm-cancel>Cancel</button>
+          <button type="submit" class="button-link">Restore</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>

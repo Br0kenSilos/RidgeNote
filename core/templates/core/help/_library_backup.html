@@ -1,0 +1,132 @@
+<section aria-labelledby="help-library-backup" data-help-topic="help-library-backup">
+  <h2 id="help-library-backup">Library Backup and Restore</h2>
+
+  <p>
+    RidgeNote lets you download a portable backup of your library and
+    restore it later if needed.
+  </p>
+  <p>
+    A <strong>Library Backup</strong> is intended to protect the
+    information stored inside RidgeNote -- your notes, folders, tags,
+    and the relationships between them. It can also be used to move a
+    library to a different RidgeNote account or another RidgeNote
+    installation.
+  </p>
+  <p>
+    A Library Backup is separate from your RidgeNote account itself.
+    Your username, password, role, and personal Preferences are not
+    part of the library backup.
+  </p>
+
+  <h3>Downloading a Library Backup</h3>
+  <p>
+    Open the account menu or the <strong>Account</strong> page and
+    select <strong>Download library backup</strong>.
+  </p>
+  <p>
+    RidgeNote creates a backup ZIP file containing your current library
+    and downloads it to your computer. The ZIP also contains readable
+    text copies of your notes.
+  </p>
+  <p>Library Backups are useful for:</p>
+  <ul>
+    <li>keeping an independent copy of your notes and library;</li>
+    <li>recovering your library if something goes wrong;</li>
+    <li>moving your library to another RidgeNote account;</li>
+    <li>moving your library to another RidgeNote installation.</li>
+  </ul>
+  <p>
+    It is a good idea to download a fresh Library Backup periodically,
+    and especially before making large or potentially destructive
+    changes to your library.
+  </p>
+
+  <h3>Restoring a Library Backup</h3>
+  <p>
+    Open the <strong>Account</strong> page and select
+    <strong>Restore previous library backup</strong>.
+  </p>
+  <p>
+    Choose the RidgeNote Library Backup file you want to restore.
+    RidgeNote shows you a preview before anything is changed and
+    requires an explicit confirmation before the restore proceeds.
+  </p>
+  <h4 class="help-warning">A Library Restore is a destructive process: it replaces your current library. It does not merge the backup with what is already there.</h4>
+  <p>
+    That means the notes, folders, and tags currently in the account
+    are replaced by the library contained in the backup.
+  </p>
+  <p>
+    If you need to keep anything that is currently in the account,
+    download a separate Library Backup first and/or download individual
+    notes you want to preserve before starting the restore.
+  </p>
+  <p>
+    Because Restore is a replacement rather than a merge, RidgeNote
+    does not need to resolve individual note-title, folder-name, or
+    tag-name collisions with the existing library.
+  </p>
+  <p>
+    For this reason, make sure you are restoring the correct backup
+    before confirming the operation.
+  </p>
+
+  <h3>Restoring to a different account</h3>
+  <p>
+    A Library Backup is not permanently tied to the account that
+    originally created it.
+  </p>
+  <p>
+    If you restore a backup while signed in to a different RidgeNote
+    account, the restored library becomes the library of the account
+    performing the restore.
+  </p>
+  <p>The account that originally created the backup is not changed.</p>
+  <p>
+    This makes Library Backup useful for moving a note library between
+    accounts as well as for ordinary recovery.
+  </p>
+  <p>
+    After the restore completes, you can download a new Library Backup
+    from the restored account in the usual way.
+  </p>
+
+  <h3>What a Library Backup does not include</h3>
+  <p>
+    A Library Backup contains your RidgeNote library -- your folders,
+    notes, tags, and their relationships -- not your account identity or
+    server configuration.
+  </p>
+  <p>It does not restore:</p>
+  <ul>
+    <li>your username or account identity;</li>
+    <li>your password or login credentials;</li>
+    <li>your RidgeNote role;</li>
+    <li>your personal Preferences;</li>
+    <li>server or deployment configuration.</li>
+  </ul>
+  <p>
+    The account receiving the restore keeps its own identity,
+    permissions, and Preferences while receiving the library from the
+    backup.
+  </p>
+  <p>
+    See <a href="{% url 'help' %}#help-account-preferences" data-help-topic-link>Account and Preferences</a>
+    for more about account-level settings.
+  </p>
+
+  <h3>Backup and Trash serve different purposes</h3>
+  <p>
+    <a href="{% url 'help' %}#help-trash-recovery" data-help-topic-link>Trash and Recovery</a>
+    protects you from accidental deletion for a limited period of time.
+  </p>
+  <p>
+    A <strong>Library Backup</strong> gives you an independent copy of
+    your library that you control outside RidgeNote.
+  </p>
+  <p>For information that is especially important to you, it is best not to rely on Trash alone.</p>
+  <p>
+    See <a href="{% url 'help' %}#help-trash-recovery" data-help-topic-link>Trash and Recovery</a>
+    for more about RidgeNote's built-in recovery periods.
+  </p>
+</section>

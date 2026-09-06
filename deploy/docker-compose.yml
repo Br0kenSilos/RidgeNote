@@ -1,0 +1,123 @@
+services:
+  # RidgeNote web application. Applies any pending database migrations
+  # automatically at startup before serving -- see README, "Automatic
+  # startup migrations".
+  web:
+    image: ${RIDGENOTE_IMAGE}
+    environment:
+      RIDGENOTE_SECRET_KEY: ${RIDGENOTE_SECRET_KEY}
+      RIDGENOTE_DEBUG: ${RIDGENOTE_DEBUG:-0}
+      RIDGENOTE_ALLOWED_HOSTS: ${RIDGENOTE_ALLOWED_HOSTS}
+      RIDGENOTE_CSRF_TRUSTED_ORIGINS: ${RIDGENOTE_CSRF_TRUSTED_ORIGINS:-}
+      RIDGENOTE_EXTERNAL_URL: ${RIDGENOTE_EXTERNAL_URL}
+      RIDGENOTE_TRUST_X_FORWARDED_PROTO: ${RIDGENOTE_TRUST_X_FORWARDED_PROTO:-false}
+      RIDGENOTE_USE_X_FORWARDED_HOST: ${RIDGENOTE_USE_X_FORWARDED_HOST:-false}
+      RIDGENOTE_DATABASE_NAME: ${RIDGENOTE_DATABASE_NAME:-ridgenote}
+      RIDGENOTE_DATABASE_USER: ${RIDGENOTE_DATABASE_USER:-ridgenote}
+      RIDGENOTE_DATABASE_PASSWORD: ${RIDGENOTE_DATABASE_PASSWORD}
+      RIDGENOTE_DATABASE_HOST: postgres
+      RIDGENOTE_DATABASE_PORT: ${RIDGENOTE_DATABASE_PORT:-5432}
+      RIDGENOTE_LOG_LEVEL: ${RIDGENOTE_LOG_LEVEL:-INFO}
+      RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD: ${RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD:-5}
+      RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS: ${RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS:-900}
+      RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS: ${RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS:-900}
+      RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS: ${RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS:-3600}
+      RIDGENOTE_SESSION_WARNING_SECONDS: ${RIDGENOTE_SESSION_WARNING_SECONDS:-300}
+      RIDGENOTE_INVITATION_EXPIRY_MINUTES: ${RIDGENOTE_INVITATION_EXPIRY_MINUTES:-120}
+      # Optional SMTP invitation delivery -- `web`
+      # only, since `scheduler` has no email-sending behavior of its own.
+      # All blank by default; RidgeNote works exactly as it does today
+      # with none of these set.
+      RIDGENOTE_SMTP_HOST: ${RIDGENOTE_SMTP_HOST:-}
+      RIDGENOTE_SMTP_PORT: ${RIDGENOTE_SMTP_PORT:-}
+      RIDGENOTE_SMTP_TLS_MODE: ${RIDGENOTE_SMTP_TLS_MODE:-}
+      RIDGENOTE_SMTP_USERNAME: ${RIDGENOTE_SMTP_USERNAME:-}
+      RIDGENOTE_SMTP_PASSWORD: ${RIDGENOTE_SMTP_PASSWORD:-}
+      RIDGENOTE_SMTP_FROM_EMAIL: ${RIDGENOTE_SMTP_FROM_EMAIL:-}
+      RIDGENOTE_SMTP_FROM_NAME: ${RIDGENOTE_SMTP_FROM_NAME:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=5).read()\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    # Bounded log retention. Unbounded json-file
+    # logs were the actual defect (not log content) -- ~50 MB max per
+    # container, oldest rotated files discarded automatically. See
+    # README, "Logs", and docs/RUNBOOK_DEPLOYMENT.md for adjustment
+    # guidance.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Background Trash retention and purge processing (same image as web,
+  # different command). Also applies any pending database migrations
+  # automatically at startup before its own loop begins -- depends only
+  # on PostgreSQL, not on web, since it establishes schema readiness
+  # itself. Idle and harmless when RIDGENOTE_PURGE_ENABLED is false (the
+  # default) -- see README, "What does the scheduler do?".
+  scheduler:
+    image: ${RIDGENOTE_IMAGE}
+    environment:
+      RIDGENOTE_SECRET_KEY: ${RIDGENOTE_SECRET_KEY}
+      RIDGENOTE_DEBUG: ${RIDGENOTE_DEBUG:-0}
+      RIDGENOTE_CSRF_TRUSTED_ORIGINS: ${RIDGENOTE_CSRF_TRUSTED_ORIGINS:-}
+      RIDGENOTE_EXTERNAL_URL: ${RIDGENOTE_EXTERNAL_URL}
+      RIDGENOTE_TRUST_X_FORWARDED_PROTO: ${RIDGENOTE_TRUST_X_FORWARDED_PROTO:-false}
+      RIDGENOTE_USE_X_FORWARDED_HOST: ${RIDGENOTE_USE_X_FORWARDED_HOST:-false}
+      RIDGENOTE_DATABASE_NAME: ${RIDGENOTE_DATABASE_NAME:-ridgenote}
+      RIDGENOTE_DATABASE_USER: ${RIDGENOTE_DATABASE_USER:-ridgenote}
+      RIDGENOTE_DATABASE_PASSWORD: ${RIDGENOTE_DATABASE_PASSWORD}
+      RIDGENOTE_DATABASE_HOST: postgres
+      RIDGENOTE_DATABASE_PORT: ${RIDGENOTE_DATABASE_PORT:-5432}
+      RIDGENOTE_LOG_LEVEL: ${RIDGENOTE_LOG_LEVEL:-INFO}
+      RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD: ${RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD:-5}
+      RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS: ${RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS:-900}
+      RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS: ${RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS:-900}
+      RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS: ${RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS:-3600}
+      RIDGENOTE_SESSION_WARNING_SECONDS: ${RIDGENOTE_SESSION_WARNING_SECONDS:-300}
+      RIDGENOTE_INVITATION_EXPIRY_MINUTES: ${RIDGENOTE_INVITATION_EXPIRY_MINUTES:-120}
+      RIDGENOTE_PURGE_ENABLED: ${RIDGENOTE_PURGE_ENABLED:-false}
+      RIDGENOTE_PURGE_INTERVAL_SECONDS: ${RIDGENOTE_PURGE_INTERVAL_SECONDS:-86400}
+    command: ["python", "manage.py", "run_purge_scheduler"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # RidgeNote database.
+  postgres:
+    image: postgres:17.10-bookworm@sha256:17b6c778de50f4bb9a878c36e736110fbcd9b7020377d6fdfdf20f7c0347e40a
+    environment:
+      # Sourced from the single user-facing RIDGENOTE_DATABASE_NAME/USER/
+      # PASSWORD -- POSTGRES_DB/USER/PASSWORD themselves are internal
+      # Compose/image keys, not separate values the installer sets.
+      POSTGRES_DB: ${RIDGENOTE_DATABASE_NAME:-ridgenote}
+      POSTGRES_USER: ${RIDGENOTE_DATABASE_USER:-ridgenote}
+      POSTGRES_PASSWORD: ${RIDGENOTE_DATABASE_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block main_class %}content-shell content-shell--workspace content-shell--home{% endblock %}
+
+{% block content %}
+  <section class="workspace-shell workspace-shell--home" data-tree-shell>
+    <div class="workspace-shell__layout">
+      {% include "notes/_workspace_tree_rail.html" with id_prefix="tree" tree_origin="home" %}
+      <section class="home-dashboard{% if home_dashboard_populated %} home-dashboard--populated{% else %} home-dashboard--empty{% endif %}" aria-labelledby="home-dashboard-heading">
+        <div class="home-dashboard__intro">
+          <h1 id="home-dashboard-heading" class="home-dashboard__heading">Welcome to RidgeNote</h1>
+          <div class="home-dashboard__copy">
+            {% if home_has_active_notes %}
+              <p class="home-dashboard__lead">A private, self-hosted scratch pad for basic and rich-text notes. Browse from the tree, search across everything, or continue with something recent.</p>
+            {% else %}
+              <p class="home-dashboard__lead">RidgeNote is a private, self-hosted scratch pad for basic and rich-text notes. It is built for quickly writing down ideas, reminders, reference information, and other things you want to organize without the complexity of a full note-management suite.</p>
+              <p class="home-dashboard__lead">Create notes, organize them into folders, add tags, search their contents, and recover deleted items from Trash.</p>
+              <p class="home-dashboard__lead">RidgeNote is intentionally simple. If you need advanced personal knowledge management, complex note relationships, scripting, attachments, revision history, or other extensive features, <a href="https://triliumnotes.org/" target="_blank" rel="noopener">Trilium Notes</a> may be a better fit.</p>
+            {% endif %}
+          </div>
+          <form class="inline-form" method="post" action="{% url 'notes:create' %}">
+            {% csrf_token %}
+            <button type="submit" class="home-dashboard__new-note">New Note</button>
+          </form>
+        </div>
+
+        <section class="home-recent" aria-labelledby="home-recent-heading">
+          <div class="home-recent__header">
+            <h2 id="home-recent-heading" class="home-recent__heading">Recent notes</h2>
+            {% if home_has_active_notes %}
+              <a class="home-recent__view-all" href="{% url 'notes:all_notes' %}">View all notes</a>
+            {% endif %}
+          </div>
+          {% if recent_notes %}
+            <ul class="home-recent__list">
+              {% for note in recent_notes %}
+                {% include "notes/_all_notes_row.html" with note=note folders=folders row_context="home" %}
+              {% endfor %}
+            </ul>
+          {% elif home_has_active_notes %}
+            <div class="home-recent__empty">
+              <p class="home-recent__empty-title">No recent notes</p>
+            </div>
+          {% elif home_has_trashed_notes %}
+            <div class="home-recent__empty">
+              <p class="home-recent__empty-title">No active notes</p>
+              <p class="home-recent__empty-guidance">Create a new note to start writing again, or visit <a href="{% url 'notes:trash' %}">Trash</a> to restore something you still need.</p>
+            </div>
+          {% else %}
+            <div class="home-recent__empty">
+              <p class="home-recent__empty-title">No notes yet</p>
+              <p class="home-recent__empty-guidance">Create your first note and start writing. You can organize it later as your scratch pad grows.</p>
+            </div>
+          {% endif %}
+        </section>
+      </section>
+    </div>
+  </section>
+
+  {% include "notes/_nav_drawer.html" %}
+{% endblock %}

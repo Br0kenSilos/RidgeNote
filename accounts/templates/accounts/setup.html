@@ -1,0 +1,13 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <h1>Set Up RidgeNote</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      {% include "accounts/_form_field.html" %}
+    {% endfor %}
+    <button type="submit">Create Administrator</button>
+  </form>
+{% endblock %}

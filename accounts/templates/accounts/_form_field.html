@@ -1,0 +1,49 @@
+{% if field.field.widget.input_type == "checkbox" %}
+  <div class="form-field form-field--checkbox"{% if extra_attrs %} {{ extra_attrs }}{% endif %}>
+    <div class="checkbox-control">
+      {{ field }}
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    </div>
+    {% if hide_visible_errors %}
+      {% if field.errors %}
+        <div class="visually-hidden" id="{{ field.auto_id }}_error">{{ field.errors }}</div>
+      {% endif %}
+    {% else %}
+      {{ field.errors }}
+    {% endif %}
+    {% if field.help_text %}<p class="help-text">{{ field.help_text }}</p>{% endif %}
+  </div>
+{% elif field.field.widget.input_type == "radio" %}
+  <div class="form-field form-field--radio-inline"{% if extra_attrs %} {{ extra_attrs }}{% endif %}>
+    <span class="form-field__label">{{ field.label }}:</span>
+    <div class="radio-inline-group">
+      {% for radio in field %}
+        <label class="radio-inline-group__option">
+          {{ radio.tag }}
+          <span>{{ radio.choice_label }}</span>
+        </label>
+      {% endfor %}
+    </div>
+    {% if hide_visible_errors %}
+      {% if field.errors %}
+        <div class="visually-hidden" id="{{ field.auto_id }}_error">{{ field.errors }}</div>
+      {% endif %}
+    {% else %}
+      {{ field.errors }}
+    {% endif %}
+    {% if field.help_text %}<p class="help-text">{{ field.help_text }}</p>{% endif %}
+  </div>
+{% else %}
+  <div class="form-field"{% if extra_attrs %} {{ extra_attrs }}{% endif %}>
+    {{ field.label_tag }}
+    {{ field }}
+    {% if hide_visible_errors %}
+      {% if field.errors %}
+        <div class="visually-hidden" id="{{ field.auto_id }}_error">{{ field.errors }}</div>
+      {% endif %}
+    {% else %}
+      {{ field.errors }}
+    {% endif %}
+    {% if field.help_text %}<p class="help-text">{{ field.help_text }}</p>{% endif %}
+  </div>
+{% endif %}

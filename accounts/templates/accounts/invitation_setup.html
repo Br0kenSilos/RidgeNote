@@ -1,0 +1,14 @@
+{% extends "accounts/base.html" %}
+
+{% block content %}
+  <h1>Complete Your Account Setup</h1>
+  <p>Choose a password to finish setting up your RidgeNote account.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      {% include "accounts/_form_field.html" %}
+    {% endfor %}
+    <button type="submit">Set Password</button>
+  </form>
+{% endblock %}

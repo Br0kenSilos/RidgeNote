@@ -1,0 +1,38 @@
+{% comment %}
+Full Search's own compact, read-only result
+row. Deliberately not a reuse of `_all_notes_row.html`, which carries
+Pin/Move/Rename/Duplicate/Delete row-action-menu machinery that has no
+place on a read-only search-results page. Expects `note`,
+`title_segments` (a `{text, highlight}` list or `None`), and
+`body_segments` (same, or `None`) in context.
+{% endcomment %}
+<li class="note-list__item full-search-result">
+  <div class="note-list__row full-search-result__row">
+    <div class="note-list__content">
+      <div class="note-list__title-row">
+        {% if note.pinned %}<span class="note-list__pin-badge" role="img" aria-label="Pinned">★</span>{% endif %}
+        <a class="note-list__title" href="{% url 'notes:detail' note.id %}">
+          {% if title_segments %}
+            {% for segment in title_segments %}{% if segment.highlight %}<mark>{{ segment.text }}</mark>{% else %}{{ segment.text }}{% endif %}{% endfor %}
+          {% else %}
+            {{ note.title }}
+          {% endif %}
+        </a>
+        {% if note.trashed_at %}<span class="full-search-result__trash-badge">Trash</span>{% endif %}
+      </div>
+      {% if body_segments %}
+        <p class="full-search-result__excerpt">
+          {% for segment in body_segments %}{% if segment.highlight %}<mark>{{ segment.text }}</mark>{% else %}{{ segment.text }}{% endif %}{% endfor %}
+        </p>
+      {% elif note.body_plain_text %}
+        <p class="full-search-result__excerpt full-search-result__excerpt--plain muted">{{ note.body_plain_text|truncatechars:160 }}</p>
+      {% endif %}
+      <p class="note-list__meta">
+        <span class="note-list__timestamp">Updated {{ note.modified_at }}</span>
+        <span class="note-list__meta-sep" aria-hidden="true">&middot;</span>
+        <span class="note-list__location">{% if note.folder_id %}in {{ note.folder.name }}{% else %}Unfiled{% endif %}</span>
+        {% include "notes/_note_tag_chips.html" %}
+      </p>
+    </div>
+  </div>
+</li>

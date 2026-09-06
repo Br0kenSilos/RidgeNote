@@ -1,0 +1,28 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Sign In - RidgeNote{% endblock %}
+{% block html_attrs %}data-theme="dark"{% endblock %}
+{% block body_attrs %}data-theme="dark" class="login-page"{% endblock %}
+{% block main_class %}content-shell login-shell{% endblock %}
+
+{% block content %}
+  <section class="login-panel" aria-labelledby="login-title">
+    <div class="login-panel__brand">
+      <p class="login-panel__product"><span class="brand-mark">{% include "branding/ridgenote-mark.svg" %}</span>RidgeNote</p>
+      <h1 id="login-title" class="login-panel__title">Sign In</h1>
+      <p class="login-panel__subtitle">Private notes, simple by default.</p>
+    </div>
+
+    <form class="login-panel__form" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="login-panel__errors">{{ form.non_field_errors }}</div>
+      {% for field in form %}
+        {% include "accounts/_form_field.html" %}
+      {% endfor %}
+      <div class="login-panel__actions">
+        <button class="login-panel__submit" type="submit">Sign In</button>
+      </div>
+    </form>
+  </section>
+{% endblock %}
