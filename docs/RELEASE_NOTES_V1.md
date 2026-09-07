@@ -2,18 +2,17 @@
 
 ## Release status
 
-This document describes the **V1 release candidate** -- the state of
-`main` after all release-readiness work (independent review, repository
-sanitation, release/operator documentation, a fresh full acceptance
-pass, and a fresh standalone deployment rehearsal) is complete. The
-final canonical public source and image coordinates have been chosen
-(GitHub and GitHub Container Registry, see "Deployment model" below),
-and private staging toward them is underway -- but **no public V1 tag,
-public GitHub release, or public repository/package visibility exists
-yet.** Public visibility is pending a separate owner presentation
-review and explicit approval. This document will be finalized once
-that happens; nothing here should be read as claiming the release has
-already shipped.
+RidgeNote v1.0.0 is the first public release. The canonical public
+source repository is
+[`https://github.com/Br0kenSilos/RidgeNote`](https://github.com/Br0kenSilos/RidgeNote),
+tagged `v1.0.0`. The canonical release image is
+`ghcr.io/br0kensilos/ridgenote:v1.0.0`, with a current stable
+convenience tag at `ghcr.io/br0kensilos/ridgenote:latest` and an
+immutable per-build provenance tag at
+`ghcr.io/br0kensilos/ridgenote:sha-12d948e`. All three currently
+resolve to digest
+`sha256:4b5db81629f0380751b782eed20eb72f629c0746d39607ac62768248b96505f3`,
+built for `linux/amd64`.
 
 ## What RidgeNote V1 is
 
@@ -64,8 +63,7 @@ default -- not a document-versioning system.
 - V1 container images are built and tested for **`linux/amd64`** only.
 - Canonical public source: `https://github.com/Br0kenSilos/RidgeNote`.
   Canonical public image: `ghcr.io/br0kensilos/ridgenote`, primary V1
-  tag `v1.0.0`. Both are staged privately as of this document and are
-  **not yet publicly visible** -- see "Release status" above.
+  tag `v1.0.0` -- see "Release status" above.
 
 See [`deploy/README.md`](../deploy/README.md) for the linear Quick
 Deploy procedure and [`docs/RUNBOOK_DEPLOYMENT.md`](RUNBOOK_DEPLOYMENT.md)
@@ -137,10 +135,6 @@ maintenance** (see
   delete, editable account identity fields (display name, username,
   email self-service), Tag merge/bulk recolor, and self-service
   password reset are not part of V1.
-- The final public registry/source coordinates are chosen (see
-  "Deployment model" above) but not yet publicly visible -- private
-  staging and an owner presentation review are still pending public
-  release.
 
 ## Acceptance evidence
 
