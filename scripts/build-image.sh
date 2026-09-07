@@ -36,10 +36,12 @@ SHORT_REVISION="$(git rev-parse --short HEAD)"
 CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 RELEASE_TAG=""
+IMAGE_VERSION=""
 if git describe --tags --exact-match >/dev/null 2>&1; then
   candidate="$(git describe --tags --exact-match)"
   if [[ "$candidate" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    RELEASE_TAG="${candidate#v}"
+    RELEASE_TAG="$candidate"
+    IMAGE_VERSION="${candidate#v}"
   fi
 fi
 
@@ -51,7 +53,7 @@ echo "  created:  ${CREATED}"
 
 docker buildx build \
   --platform linux/amd64 \
-  --build-arg "IMAGE_VERSION=${RELEASE_TAG:-0.0.0-${SHORT_REVISION}}" \
+  --build-arg "IMAGE_VERSION=${IMAGE_VERSION:-0.0.0-${SHORT_REVISION}}" \
   --build-arg "IMAGE_REVISION=${REVISION}" \
   --build-arg "IMAGE_CREATED=${CREATED}" \
   -t "${COMMIT_REF}" \
