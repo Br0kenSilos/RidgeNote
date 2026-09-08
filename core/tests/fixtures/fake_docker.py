@@ -9,9 +9,15 @@ sudo, or network access is required:
 - ``FAKE_DOCKER_NO_COMPOSE``: if set, ``docker compose version`` fails,
   simulating an environment without the Compose V2 plugin.
 - ``FAKE_DOCKER_BAD_IMAGE``: if set, the discovered PostgreSQL image is
-  not digest-pinned, to exercise the rejection path.
-- ``FAKE_DOCKER_BAD_UID``: if set, ``id -u postgres``/``id -g postgres``
-  return non-numeric output, to exercise the UID/GID rejection path.
+  not a `postgres:` image at all, to exercise the rejection path. The
+  approved V1 image (`postgres:17-bookworm`) is a floating tag within
+  PostgreSQL major 17, deliberately not digest-pinned -- this fixture
+  no longer simulates a digest-pinning failure, since that is no longer
+  a rejection condition.
+
+There is no PostgreSQL UID/GID discovery to simulate: the script
+hardcodes the approved V1 ownership contract (999:999) rather than
+running `docker run --entrypoint id` against the image.
 """
 
 import os
@@ -24,12 +30,7 @@ if log_path:
     with open(log_path, "a") as fh:
         fh.write(" ".join(args) + "\n")
 
-PG_IMAGE = (
-    "postgres:not-pinned"
-    if os.environ.get("FAKE_DOCKER_BAD_IMAGE")
-    else "postgres:17.10-bookworm@sha256:"
-    "17b6c778de50f4bb9a878c36e736110fbcd9b7020377d6fdfdf20f7c0347e40a"
-)
+PG_IMAGE = "mysql:8-bookworm" if os.environ.get("FAKE_DOCKER_BAD_IMAGE") else "postgres:17-bookworm"
 
 if args[:1] == ["info"]:
     sys.exit(0)
@@ -80,16 +81,6 @@ if args[:1] == ["compose"]:
     print(f"    image: {PG_IMAGE}")
     print("    environment:")
     print(f"      POSTGRES_PASSWORD: {postgres_password}")
-    sys.exit(0)
-
-if args[:1] == ["run"]:
-    bad_uid = bool(os.environ.get("FAKE_DOCKER_BAD_UID"))
-    if "-u" in args:
-        print("not-a-number" if bad_uid else "999")
-        sys.exit(0)
-    if "-g" in args:
-        print("not-a-number" if bad_uid else "999")
-        sys.exit(0)
     sys.exit(0)
 
 sys.exit(1)

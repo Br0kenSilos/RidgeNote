@@ -29,6 +29,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+ROOT_ENV_EXAMPLE = ROOT_DIR / ".env.example"
+
+
 def _read(name: str) -> str:
     return (DEPLOY_DIR / name).read_text()
 
@@ -53,18 +56,32 @@ def test_docker_compose_yml_exists_and_old_filename_does_not():
     assert not (DEPLOY_DIR / "compose.yaml").exists()
 
 
+def test_env_example_exists_and_old_dotfile_name_does_not():
+    # The visible sample env filename is `env.example` -- not hidden
+    # from inexperienced Linux users behind a leading dot.
+    assert (DEPLOY_DIR / "env.example").exists()
+    assert not (DEPLOY_DIR / ".env.example").exists()
+
+
+def test_root_dev_env_example_is_untouched_by_the_deploy_rename():
+    # The separate local-development env sample at the repository root
+    # is a different file for a different purpose -- confirm the
+    # deploy-bundle rename did not touch it.
+    assert ROOT_ENV_EXAMPLE.exists()
+
+
 def test_env_example_allowed_hosts_includes_loopback_for_healthcheck():
-    env_example = _read(".env.example")
+    env_example = _read("env.example")
     for line in env_example.splitlines():
         if line.startswith("RIDGENOTE_ALLOWED_HOSTS="):
             assert "127.0.0.1" in line.split("=", 1)[1].split(",")
             break
     else:
-        raise AssertionError("RIDGENOTE_ALLOWED_HOSTS not found in .env.example")
+        raise AssertionError("RIDGENOTE_ALLOWED_HOSTS not found in env.example")
 
 
 def test_env_example_does_not_use_wildcard_host():
-    env_example = _read(".env.example")
+    env_example = _read("env.example")
     for line in env_example.splitlines():
         if line.startswith("RIDGENOTE_ALLOWED_HOSTS="):
             assert "*" not in line
@@ -76,18 +93,38 @@ def test_healthcheck_target_matches_documented_loopback_host():
     assert "http://127.0.0.1:8000/health/" in compose
 
 
-def test_ridgenote_services_use_image_not_build():
+def test_ridgenote_services_use_the_pinned_v1_image_directly_not_build():
+    # LOCKED V1 decision: the canonical deployment Compose hardcodes the
+    # official image directly for both web and scheduler -- no
+    # ${RIDGENOTE_IMAGE} indirection, and no compose-level image
+    # override variable in the normal deployment contract. Pinned to
+    # v1.0.1 (the current recommended deployment version -- v1.0.0 was
+    # published without the accepted session-idle fix; see release
+    # history for that historical detail).
     compose = _read("docker-compose.yml")
-    assert "${RIDGENOTE_IMAGE}" in compose
+    assert "${RIDGENOTE_IMAGE}" not in compose
+    assert compose.count("image: ghcr.io/br0kensilos/ridgenote:v1.0.1") == 2
     assert "build:" not in compose
 
 
-def test_postgres_image_remains_pinned_by_digest():
+def test_postgres_image_is_floating_within_major_17_not_digest_pinned():
+    # LOCKED V1 decision: postgres:17-bookworm -- pinned to PostgreSQL
+    # major 17, receiving ordinary 17.x image/security refreshes, and
+    # deliberately NOT pinned to an exact digest in the shipped
+    # deployment Compose (contrast with core/tests/test_settings.py's
+    # local-development Compose, which remains digest-pinned).
     compose = _read("docker-compose.yml")
-    assert (
-        "postgres:17.10-bookworm@sha256:"
-        "17b6c778de50f4bb9a878c36e736110fbcd9b7020377d6fdfdf20f7c0347e40a"
-    ) in compose
+    assert "image: postgres:17-bookworm" in compose
+    assert "@sha256:" not in compose
+    assert "postgres:latest" not in compose
+    assert "postgres:18" not in compose
+
+
+def test_deploy_services_have_explicit_container_names():
+    compose = _read("docker-compose.yml")
+    assert "container_name: ridgenote-web" in compose
+    assert "container_name: ridgenote-scheduler" in compose
+    assert "container_name: ridgenote-postgres" in compose
 
 
 def test_postgres_bind_mount_path_unchanged():
@@ -110,13 +147,16 @@ def test_no_visible_compose_migrate_service():
     assert '"migrate"' not in compose
 
 
-def test_purge_disabled_by_default():
+def test_purge_enabled_by_default():
+    # LOCKED V1 decision: automatic Trash purge is enabled by default in
+    # the shipped deployment (it was disabled by default before).
     compose = _read("docker-compose.yml")
-    assert "RIDGENOTE_PURGE_ENABLED: ${RIDGENOTE_PURGE_ENABLED:-false}" in compose
+    assert "RIDGENOTE_PURGE_ENABLED: ${RIDGENOTE_PURGE_ENABLED:-true}" in compose
+    assert "RIDGENOTE_PURGE_INTERVAL_SECONDS: ${RIDGENOTE_PURGE_INTERVAL_SECONDS:-86400}" in compose
 
 
 def test_env_example_contains_no_real_secret():
-    env_example = _read(".env.example")
+    env_example = _read("env.example")
     for line in env_example.splitlines():
         if line.startswith("RIDGENOTE_SECRET_KEY=") or line.startswith(
             "RIDGENOTE_DATABASE_PASSWORD="
@@ -126,7 +166,7 @@ def test_env_example_contains_no_real_secret():
 
 
 def test_env_example_has_exactly_one_user_facing_database_password():
-    env_example = _read(".env.example")
+    env_example = _read("env.example")
     assert not any(line.startswith("POSTGRES_PASSWORD=") for line in env_example.splitlines())
     assert (
         sum(line.startswith("RIDGENOTE_DATABASE_PASSWORD=") for line in env_example.splitlines())
@@ -144,7 +184,7 @@ def test_env_example_has_no_independent_postgres_identity_variables():
     # PostgreSQL's own database/user are internal Compose/image keys,
     # derived automatically from RIDGENOTE_DATABASE_NAME/USER -- an
     # installer must never need to set or keep them in sync by hand.
-    env_example = _read(".env.example")
+    env_example = _read("env.example")
     lines = env_example.splitlines()
     assert not any(line.startswith("POSTGRES_DB=") for line in lines)
     assert not any(line.startswith("POSTGRES_USER=") for line in lines)
@@ -220,26 +260,34 @@ def test_web_receives_invitation_expiry_forwarded_host_and_smtp_pass_through():
 def test_external_url_present_exactly_once_in_web_and_not_duplicated():
     compose = _read("docker-compose.yml")
     web_block = _service_block(compose, "web", "scheduler")
-    assert web_block.count("RIDGENOTE_EXTERNAL_URL:") == 1
-    assert "RIDGENOTE_EXTERNAL_URL: ${RIDGENOTE_EXTERNAL_URL}" in web_block
+    # Counts the YAML key itself (its own line), not the substring match
+    # `${RIDGENOTE_EXTERNAL_URL:-}`'s interpolation also incidentally
+    # contains once the default-value syntax is present.
+    assert web_block.count("\n      RIDGENOTE_EXTERNAL_URL:") == 1
+    assert "RIDGENOTE_EXTERNAL_URL: ${RIDGENOTE_EXTERNAL_URL:-}" in web_block
 
 
-def test_scheduler_receives_invitation_expiry_and_forwarded_host_but_no_smtp():
+def test_scheduler_receives_only_what_the_purge_scheduler_actually_needs():
+    # The approved V1 Compose architecture narrows scheduler's own
+    # environment to exactly what `run_purge_scheduler` needs (identity,
+    # debug/logging, database connection, purge settings) -- it does not
+    # receive web-request-only settings (invitation expiry, forwarded
+    # -host, SMTP) that have no effect on a service that never handles
+    # HTTP requests or sends email itself.
     compose = _read("docker-compose.yml")
     scheduler_block = _service_block(compose, "scheduler", "postgres")
+    assert "RIDGENOTE_PURGE_ENABLED: ${RIDGENOTE_PURGE_ENABLED:-true}" in scheduler_block
     assert (
-        "RIDGENOTE_INVITATION_EXPIRY_MINUTES: ${RIDGENOTE_INVITATION_EXPIRY_MINUTES:-120}"
+        "RIDGENOTE_PURGE_INTERVAL_SECONDS: ${RIDGENOTE_PURGE_INTERVAL_SECONDS:-86400}"
         in scheduler_block
     )
-    assert (
-        "RIDGENOTE_USE_X_FORWARDED_HOST: ${RIDGENOTE_USE_X_FORWARDED_HOST:-false}"
-        in scheduler_block
-    )
+    assert "RIDGENOTE_INVITATION_EXPIRY_MINUTES" not in scheduler_block
+    assert "RIDGENOTE_USE_X_FORWARDED_HOST" not in scheduler_block
     assert "RIDGENOTE_SMTP_" not in scheduler_block
 
 
 def test_env_example_contains_all_nine_new_pass_through_variables():
-    env_example = _read(".env.example")
+    env_example = _read("env.example")
     lines = env_example.splitlines()
     for var in (
         "RIDGENOTE_INVITATION_EXPIRY_MINUTES",
@@ -256,13 +304,13 @@ def test_env_example_contains_all_nine_new_pass_through_variables():
 
 
 def test_env_example_smtp_password_placeholder_is_blank():
-    env_example = _read(".env.example")
+    env_example = _read("env.example")
     for line in env_example.splitlines():
         if line.startswith("RIDGENOTE_SMTP_PASSWORD="):
             assert line == "RIDGENOTE_SMTP_PASSWORD="
             break
     else:
-        raise AssertionError("RIDGENOTE_SMTP_PASSWORD not found in .env.example")
+        raise AssertionError("RIDGENOTE_SMTP_PASSWORD not found in env.example")
 
 
 # -- bounded Docker log retention, canonical and

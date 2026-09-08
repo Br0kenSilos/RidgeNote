@@ -43,9 +43,12 @@ The shipped Compose file runs exactly three services:
 - **`scheduler`** -- background Trash retention/purge processing; the
   same image as `web`, running `python manage.py run_purge_scheduler`
   instead. See section 8 for full detail. By default
-  (`RIDGENOTE_PURGE_ENABLED=false`) it starts, logs that automatic
-  purge is disabled, and idles -- it never touches the database and
-  its temporary downtime has no effect on ordinary RidgeNote use.
+  (`RIDGENOTE_PURGE_ENABLED=true`) it starts and periodically purges
+  Trash items whose retention window has ended, checking once every
+  `RIDGENOTE_PURGE_INTERVAL_SECONDS` (86400 seconds, once per day, by
+  default) -- its temporary downtime has no effect on ordinary
+  RidgeNote use; purge-eligible items simply remain safely in Trash
+  until the next cycle.
 - **`postgres`** -- the database. PostgreSQL is RidgeNote's only data
   store: it holds all application data (notes, folders, tags,
   accounts) and is relied on for the transactions, constraints, and
@@ -72,7 +75,7 @@ automatically at startup before doing anything else -- see section 4a.
   the public Internet.** The shipped Compose file does not publish it
   externally by default -- keep it that way.
 - A strong, unique `RIDGENOTE_SECRET_KEY` -- never the
-  `development-only-change-me` default from `.env.example`.
+  `development-only-change-me` default from `env.example`.
 - A recent backup taken before any upgrade (see
   `docs/RUNBOOK_BACKUP_RESTORE.md`) -- automatic startup migrations
   (section 4a) do not make this optional.
@@ -90,33 +93,11 @@ automatically at startup before doing anything else -- see section 4a.
 
 All configuration is environment-variable driven (`RIDGENOTE_*`), following
 this project's existing convention -- no other configuration mechanism
-is introduced by this runbook.
-
-| Variable | Required? | Safe default | Direct-IP example | Proxy example | Notes |
-|---|---|---|---|---|---|
-| `RIDGENOTE_SECRET_KEY` | Required (production) | insecure dev key | strong random value | strong random value | Never reuse the shipped default outside local development. |
-| `RIDGENOTE_DEBUG` | Optional | `0` (false) | `0` | `0` | Never `1` in a real deployment. |
-| `RIDGENOTE_ALLOWED_HOSTS` | Required (production) | `localhost,127.0.0.1,0.0.0.0` | `192.0.2.10` | `notes.example.test` | Comma-separated; must include the exact host clients will use. |
-| `RIDGENOTE_CSRF_TRUSTED_ORIGINS` | Required for proxy HTTPS | empty | empty | `https://notes.example.test` | Must include the scheme; Django rejects a bare hostname here. |
-| `RIDGENOTE_EXTERNAL_URL` | Optional (recommended) | empty | `http://192.0.2.10:8000` | `https://notes.example.test` | Blank is valid for a direct-LAN deployment. Used for absolute links; becomes necessary once automatic SMTP invitation delivery is configured (section 3a). When set, should match how users actually reach the deployment. |
-| `RIDGENOTE_TRUST_X_FORWARDED_PROTO` | Optional | `false` | `false` | `true` | See section 5 -- enable only when reachable exclusively through a trusted proxy. |
-| `RIDGENOTE_USE_X_FORWARDED_HOST` | Optional | `false` | `false` | `false` unless the proxy contract requires it | Independent of the above; enabling it trusts `X-Forwarded-Host` for `request.get_host()`. |
-| `RIDGENOTE_SMTP_HOST` | Optional | empty | empty (manual-copy only) | `smtp.example.com` | Leave blank for manual-copy-only invitation delivery -- see section 3a. |
-| `RIDGENOTE_SMTP_PORT` | Optional | empty | empty | `587` | Positive integer; never inferred from TLS mode; required once any other SMTP variable is set. |
-| `RIDGENOTE_SMTP_TLS_MODE` | Optional | `none` | `none` | `starttls` | One of `none`/`starttls`/`ssl`; any other value fails at startup. |
-| `RIDGENOTE_SMTP_USERNAME` / `RIDGENOTE_SMTP_PASSWORD` | Optional | both empty | both empty | both set | Leave *both* blank for an unauthenticated relay; setting only one fails at startup. |
-| `RIDGENOTE_SMTP_FROM_EMAIL` | Optional | empty | empty | `ridgenote@example.com` | Required once any other SMTP variable is set. |
-| `RIDGENOTE_SMTP_FROM_NAME` | Optional | empty | empty | `RidgeNote` | Optional display name; blank uses the bare From address alone. |
-| `RIDGENOTE_DATABASE_NAME` / `_USER` / `_PASSWORD` / `_HOST` / `_PORT` | Required (production) | dev-friendly values | real credentials | real credentials | `_HOST` is `postgres` in the shipped Compose file, not operator-configurable there. |
-| `RIDGENOTE_LOG_LEVEL` | Optional | `INFO` | `INFO` | `INFO` | Any standard Python logging level name; not validated against a fixed list. |
-| `RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD` | Optional | 5 | 5 | 5 | Strict positive integer; malformed values fail at startup. |
-| `RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS` | Optional | 900 | 900 | 900 | Strict positive integer; malformed values fail at startup. |
-| `RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS` | Optional | 900 | 900 | 900 | Strict positive integer; malformed values fail at startup. |
-| `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS` | Optional | 3600 | 3600 | 3600 | Strict positive integer; must exceed the warning value below. |
-| `RIDGENOTE_SESSION_WARNING_SECONDS` | Optional | 300 | 300 | 300 | Strict positive integer; must be less than the idle timeout above. |
-| `RIDGENOTE_INVITATION_EXPIRY_MINUTES` | Optional | 120 | 120 | 120 | Strict positive integer; how long an administrator-issued invitation link stays valid before it must be reissued. |
-| `RIDGENOTE_PURGE_ENABLED` | Optional | `false` | `false` | `false` | Strict `true`/`false`; scheduler-only, validated in the management command, not shared settings. |
-| `RIDGENOTE_PURGE_INTERVAL_SECONDS` | Optional | 86400 | 86400 | 86400 | Strict positive integer; scheduler-only. |
+is introduced by this runbook. See
+[`docs/CONFIGURATION.md`](CONFIGURATION.md) for the complete
+variable reference -- every shipped setting, whether it is required,
+its default, and a plain-English explanation, including the direct-IP
+vs. reverse-proxy example values referenced throughout this runbook.
 
 There are no separate item-purge batch-size environment variables
 today -- `notes/purge.py`'s per-cycle batch sizes (`NOTE_BATCH_SIZE =
@@ -165,16 +146,18 @@ recommended production layout -- restrict direct backend access before
 treating either topology as your permanent deployment shape.
 
 **Credentials never belong in a committed file.** `RIDGENOTE_SMTP_PASSWORD`
-(and any other secret in this table) belongs only in your local,
-already-gitignored `.env` -- never in `.env.example`, never in
-`docker-compose.yml`, never in a commit of any kind.
+(and any other secret) belongs only in your local, already-gitignored
+`.env` -- never in `env.example`, never in `docker-compose.yml`, never
+in a commit of any kind.
 
 ## 4. Initial deployment sequence
 
-1. Create or update `.env` from `.env.example`, setting real values for
-   the required variables in section 3 (most others are optional and
-   already have a safe default -- see the table's "Required?" column).
-2. Build (or pull) the image: `docker compose build`.
+1. Create or update `.env` from `env.example`, setting real values for
+   the required variables (most others are optional and already have a
+   safe default -- see `docs/CONFIGURATION.md` for the complete
+   reference).
+2. Pull the image (or build it yourself from source -- see section
+   12): `docker compose pull`.
 3. Start everything: `docker compose up -d`. There is no separate
    manual migration step for an ordinary install -- `web` and
    `scheduler` each apply any pending database migrations
@@ -249,6 +232,21 @@ This is not part of the normal install or upgrade flow; the automatic
 startup check already runs it for you. `docker-entrypoint.sh`
 recognizes this exact invocation (and `manage.py startup_migrate`) and
 skips running the automatic check a second time in front of it.
+
+### 4b. Advanced: a single self-contained Compose file
+
+The canonical deployment path is, and remains, `docker-compose.yml`
+paired with a separate `.env` -- this runbook does not document or
+maintain a second canonical Compose file with literal configuration
+values baked in. An operator who strongly prefers a single
+self-contained file may manually replace the `${...}` expressions in
+`docker-compose.yml` with literal values and discard `.env` entirely.
+**If you do this, your secrets (`RIDGENOTE_SECRET_KEY`,
+`RIDGENOTE_DATABASE_PASSWORD`, and any SMTP credentials) live directly
+inside `docker-compose.yml`** -- protect that file exactly as you
+would protect `.env` (permissions, exclusion from version control, and
+so on). This is an unsupported, self-service convenience, not a
+documented or tested deployment shape.
 
 ## 5. Direct IP:PORT deployment
 
@@ -409,8 +407,10 @@ instead of attempting an in-place schema downgrade.
 
 ### 7b. PostgreSQL major-version upgrades
 
-V1 is pinned to PostgreSQL 17 (`postgres:17.10-bookworm`, by digest,
-in the shipped Compose file). The automatic startup migrations
+V1 is pinned to PostgreSQL major version 17 (`postgres:17-bookworm`
+in the shipped Compose file) -- a floating tag within major 17, so a
+`docker compose pull` picks up ordinary PostgreSQL 17.x image/security
+updates without a silent major-version jump. The automatic startup migrations
 described in section 4a are ordinary Django application/database
 schema migrations -- they never upgrade PostgreSQL itself. **In-place
 PostgreSQL major-version upgrades (e.g. 17 -> 18) are not supported by
@@ -426,9 +426,16 @@ change without a verified, current backup taken first.
 
 ## 8. Scheduler operations
 
-- **Disabled by default:** `RIDGENOTE_PURGE_ENABLED` defaults to
-  `false`; a fresh deployment performs no automatic item purge until an
-  operator deliberately enables it.
+- **Enabled by default:** `RIDGENOTE_PURGE_ENABLED` defaults to
+  `true`; a fresh deployment automatically purges Trash items whose
+  retention window has ended, without further operator action. Set
+  `RIDGENOTE_PURGE_ENABLED=false` to disable it.
+- **`RIDGENOTE_PURGE_INTERVAL_SECONDS` is a check interval, not a
+  retention period:** it controls how often the scheduler looks for
+  eligible items (86400 seconds = once per day, by default) -- it has
+  no effect on how long an item stays in Trash before becoming
+  eligible; that retention window is a separate, existing application
+  behavior this variable does not configure.
 - **Strict parsing:** both `RIDGENOTE_PURGE_ENABLED` (case-insensitive
   `true`/`false`, blank rejected) and `RIDGENOTE_PURGE_INTERVAL_SECONDS`
   (positive integer) fail the `scheduler` container's startup clearly on
@@ -515,8 +522,9 @@ Full backup and restore procedures live in
 it states only the cross-cutting requirement that applies whenever a
 restore has just happened:
 
-- Keep the scheduler disabled (`RIDGENOTE_PURGE_ENABLED=false`) during a
-  restore and its immediate review.
+- Explicitly set `RIDGENOTE_PURGE_ENABLED=false` (overriding the
+  enabled-by-default shipped setting) during a restore and its
+  immediate review.
 - Inspect the restored database's Trash state before considering item
   purge safe to resume -- a restored backup can reintroduce rows whose
   age no longer reflects when they were actually trashed relative to the
@@ -671,15 +679,17 @@ connection, not a healthy running `web` process.
 
 ## 12. Building from source
 
-Normal V1 deployment uses a published container image -- see
-`deploy/README.md`. Maintainers or operators who intentionally want to
-build RidgeNote from source instead can use `scripts/build-image.sh
-<registry-image-name> [--push]` from a clean Git working tree; it
-builds the image, tags it with a commit-derived `sha-<short-commit>`
-tag (and an additional `vX.Y.Z` tag when `HEAD` is exactly an
-annotated release tag), and pushes only when `--push` is passed
-explicitly. Like the published V1 image, this script currently targets
-`linux/amd64` only (see "Supported platforms" in the project
-`README.md`). Final registry coordinates for any image this script
-produces remain an operator/release decision -- this runbook does not
-prescribe one.
+Normal V1 deployment uses the official published container image --
+see `deploy/README.md` for that path and its canonical image
+coordinates. This section instead covers the separate case of
+building your own image from source: maintainers or operators who
+intentionally want to build RidgeNote themselves can use
+`scripts/build-image.sh <registry-image-name> [--push]` from a clean
+Git working tree; it builds the image, tags it with a commit-derived
+`sha-<short-commit>` tag (and an additional `vX.Y.Z` tag when `HEAD`
+is exactly an annotated release tag), and pushes only when `--push` is
+passed explicitly. Like the published V1 image, this script currently
+targets `linux/amd64` only (see "Supported platforms" in the project
+`README.md`). Registry coordinates for a custom/operator-built image
+produced this way remain that operator's own decision -- this section
+does not prescribe one.

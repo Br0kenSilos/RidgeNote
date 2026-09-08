@@ -38,7 +38,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 README = (DEPLOY_DIR / "README.md").read_text() if _DEPLOY_DIR_AVAILABLE else ""
-ENV_EXAMPLE = (DEPLOY_DIR / ".env.example").read_text() if _DEPLOY_DIR_AVAILABLE else ""
+ENV_EXAMPLE = (DEPLOY_DIR / "env.example").read_text() if _DEPLOY_DIR_AVAILABLE else ""
 # The comprehensive operator/deployment reference. Quick Deploy
 # (`deploy/README.md`, `README` above) intentionally moved deep
 # service-model/topology/migration exposition here.
@@ -97,7 +97,7 @@ def test_minimal_three_file_bundle_is_documented_as_sufficient():
     # "Before you begin", where an installer reads it before starting.
     section = _section(README, r"^## Before you begin", r"^## Quick Deploy")
     assert "docker-compose.yml" in section
-    assert ".env.example" in section
+    assert "env.example" in section
     assert "README.md" in section
     assert "exactly these three files, and nothing else" in section
 
@@ -111,11 +111,12 @@ def test_optional_helper_bundle_is_documented():
 
 def test_manual_path_covers_required_steps():
     required_concepts = [
-        r"cp \.env\.example \.env",  # .env creation
+        r"cp env\.example \.env",  # .env creation
         r"openssl rand",  # secret generation
         r"mkdir -p data/postgres backups/postgres",  # persistent directories
-        r"entrypoint /usr/bin/id",  # PostgreSQL UID/GID discovery
-        r"sudo chown",  # ownership
+        r"sudo chown 999:999",  # approved V1 PostgreSQL ownership contract
+        r"ls -ldn data/postgres",  # explicit numeric-ownership verification
+        r"sudo chmod 700 data/postgres",  # ownership/permissions
         r"docker compose config --quiet",  # Compose validation
         r"docker compose pull",  # image pull
         r"docker compose up -d\n",  # single-command startup (automatic migrations)
@@ -129,7 +130,7 @@ def test_manual_path_covers_required_steps():
 
 def test_manual_path_does_not_require_a_separate_manual_migration_step():
     install_start = _heading_index(r"1\.\s+\*\*Create the deployment directory\*\*")
-    install_end = _heading_index(r"10\.\s+\*\*Create the first administrator")
+    install_end = _heading_index(r"9\.\s+\*\*Create the first administrator")
     install_section = README[install_start:install_end]
     # The leading numbered install procedure must not instruct the
     # operator to run a migration command themselves -- automatic
@@ -169,11 +170,17 @@ def test_no_chmod_777_instructed():
         assert not re.search(r"chmod\s+777\b", block)
 
 
-def test_no_universal_hardcoded_postgres_uid_gid():
-    # 999:999 must never appear as a literal instructed value inside a
-    # command block -- only real discovery commands are permitted there.
-    for block in _code_blocks(README):
-        assert "999:999" not in block
+def test_postgres_ownership_is_the_approved_hardcoded_999_999_contract():
+    # LOCKED V1 decision: deliberately replaces the prior dynamic
+    # `docker run --entrypoint id` UID/GID discovery approach -- the
+    # real deployment rehearsal confirmed 999:999 (the postgres:17
+    # -bookworm image's standard numeric user/group) is correct, and
+    # Quick Deploy must instruct it directly and unmissably, before
+    # first startup, not bury it in troubleshooting.
+    assert any("sudo chown 999:999 data/postgres" in block for block in _code_blocks(README))
+    assert "999 999" in README  # expected `ls -ldn` output, stated explicitly
+    assert "never assume this is `999:999`" not in README
+    assert "entrypoint /usr/bin/id" not in README
 
 
 def test_env_example_distinguishes_required_from_optional_settings():
@@ -181,7 +188,7 @@ def test_env_example_distinguishes_required_from_optional_settings():
     # what needs deliberate attention (REQUIRED, no safe default) from
     # what already has a safe default (OPTIONAL) -- exactly two
     # top-level categories, not an ambiguous third tier.
-    for marker in ("REQUIRED", "OPTIONAL", "SMTP invitation delivery"):
+    for marker in ("REQUIRED", "OPTIONAL", "EMAIL HANDLING"):
         assert marker in ENV_EXAMPLE
 
 
@@ -191,7 +198,7 @@ def test_env_example_still_documents_loopback_host():
 
 def test_env_example_has_no_duplicate_variable_assignments():
     names = re.findall(r"^([A-Z][A-Z0-9_]*)=", ENV_EXAMPLE, re.MULTILINE)
-    assert len(names) == len(set(names)), "duplicate variable declared in deploy/.env.example"
+    assert len(names) == len(set(names)), "duplicate variable declared in deploy/env.example"
 
 
 def test_env_example_lines_are_well_formed():
@@ -223,10 +230,11 @@ def test_scheduler_explanation_is_present_and_grounded_in_code():
     assert "run_purge_scheduler" in section
     assert "RIDGENOTE_PURGE_ENABLED" in section
     assert "RIDGENOTE_PURGE_INTERVAL_SECONDS" in section
-    # Must state the verified disabled-by-default behavior, not merely
-    # what it does when enabled.
-    assert "false" in section
-    assert "nothing" in section.lower()
+    # LOCKED V1 decision: purge is enabled by default (it was disabled
+    # by default before) -- must state the verified enabled-by-default
+    # behavior, not the superseded disabled one.
+    assert "true" in section
+    assert "enabled by default" in section.lower()
 
 
 def test_postgres_explanation_is_present():

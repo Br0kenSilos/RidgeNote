@@ -3,26 +3,33 @@ services:
   # automatically at startup before serving -- see README, "Automatic
   # startup migrations".
   web:
-    image: ${RIDGENOTE_IMAGE}
+    container_name: ridgenote-web
+    # Use :latest instead if you prefer tracking the newest published RidgeNote image.
+    image: ghcr.io/br0kensilos/ridgenote:v1.0.1
     environment:
       RIDGENOTE_SECRET_KEY: ${RIDGENOTE_SECRET_KEY}
-      RIDGENOTE_DEBUG: ${RIDGENOTE_DEBUG:-0}
       RIDGENOTE_ALLOWED_HOSTS: ${RIDGENOTE_ALLOWED_HOSTS}
+      RIDGENOTE_EXTERNAL_URL: ${RIDGENOTE_EXTERNAL_URL:-}
+
       RIDGENOTE_CSRF_TRUSTED_ORIGINS: ${RIDGENOTE_CSRF_TRUSTED_ORIGINS:-}
-      RIDGENOTE_EXTERNAL_URL: ${RIDGENOTE_EXTERNAL_URL}
       RIDGENOTE_TRUST_X_FORWARDED_PROTO: ${RIDGENOTE_TRUST_X_FORWARDED_PROTO:-false}
       RIDGENOTE_USE_X_FORWARDED_HOST: ${RIDGENOTE_USE_X_FORWARDED_HOST:-false}
+
+      RIDGENOTE_DEBUG: ${RIDGENOTE_DEBUG:-0}
+      RIDGENOTE_LOG_LEVEL: ${RIDGENOTE_LOG_LEVEL:-INFO}
+
       RIDGENOTE_DATABASE_NAME: ${RIDGENOTE_DATABASE_NAME:-ridgenote}
       RIDGENOTE_DATABASE_USER: ${RIDGENOTE_DATABASE_USER:-ridgenote}
       RIDGENOTE_DATABASE_PASSWORD: ${RIDGENOTE_DATABASE_PASSWORD}
       RIDGENOTE_DATABASE_HOST: postgres
       RIDGENOTE_DATABASE_PORT: ${RIDGENOTE_DATABASE_PORT:-5432}
-      RIDGENOTE_LOG_LEVEL: ${RIDGENOTE_LOG_LEVEL:-INFO}
+
       RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD: ${RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD:-5}
       RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS: ${RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS:-900}
       RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS: ${RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS:-900}
       RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS: ${RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS:-3600}
       RIDGENOTE_SESSION_WARNING_SECONDS: ${RIDGENOTE_SESSION_WARNING_SECONDS:-300}
+
       RIDGENOTE_INVITATION_EXPIRY_MINUTES: ${RIDGENOTE_INVITATION_EXPIRY_MINUTES:-120}
       # Optional SMTP invitation delivery -- `web`
       # only, since `scheduler` has no email-sending behavior of its own.
@@ -62,31 +69,25 @@ services:
   # different command). Also applies any pending database migrations
   # automatically at startup before its own loop begins -- depends only
   # on PostgreSQL, not on web, since it establishes schema readiness
-  # itself. Idle and harmless when RIDGENOTE_PURGE_ENABLED is false (the
-  # default) -- see README, "What does the scheduler do?".
+  # itself. Enabled by default -- see README, "What does the scheduler do?".
   scheduler:
-    image: ${RIDGENOTE_IMAGE}
+    container_name: ridgenote-scheduler
+    # Use :latest instead if you prefer tracking the newest published RidgeNote image.
+    image: ghcr.io/br0kensilos/ridgenote:v1.0.1
     environment:
       RIDGENOTE_SECRET_KEY: ${RIDGENOTE_SECRET_KEY}
       RIDGENOTE_DEBUG: ${RIDGENOTE_DEBUG:-0}
-      RIDGENOTE_CSRF_TRUSTED_ORIGINS: ${RIDGENOTE_CSRF_TRUSTED_ORIGINS:-}
-      RIDGENOTE_EXTERNAL_URL: ${RIDGENOTE_EXTERNAL_URL}
-      RIDGENOTE_TRUST_X_FORWARDED_PROTO: ${RIDGENOTE_TRUST_X_FORWARDED_PROTO:-false}
-      RIDGENOTE_USE_X_FORWARDED_HOST: ${RIDGENOTE_USE_X_FORWARDED_HOST:-false}
+      RIDGENOTE_LOG_LEVEL: ${RIDGENOTE_LOG_LEVEL:-INFO}
+
       RIDGENOTE_DATABASE_NAME: ${RIDGENOTE_DATABASE_NAME:-ridgenote}
       RIDGENOTE_DATABASE_USER: ${RIDGENOTE_DATABASE_USER:-ridgenote}
       RIDGENOTE_DATABASE_PASSWORD: ${RIDGENOTE_DATABASE_PASSWORD}
       RIDGENOTE_DATABASE_HOST: postgres
       RIDGENOTE_DATABASE_PORT: ${RIDGENOTE_DATABASE_PORT:-5432}
-      RIDGENOTE_LOG_LEVEL: ${RIDGENOTE_LOG_LEVEL:-INFO}
-      RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD: ${RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD:-5}
-      RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS: ${RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS:-900}
-      RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS: ${RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS:-900}
-      RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS: ${RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS:-3600}
-      RIDGENOTE_SESSION_WARNING_SECONDS: ${RIDGENOTE_SESSION_WARNING_SECONDS:-300}
-      RIDGENOTE_INVITATION_EXPIRY_MINUTES: ${RIDGENOTE_INVITATION_EXPIRY_MINUTES:-120}
-      RIDGENOTE_PURGE_ENABLED: ${RIDGENOTE_PURGE_ENABLED:-false}
+
+      RIDGENOTE_PURGE_ENABLED: ${RIDGENOTE_PURGE_ENABLED:-true}
       RIDGENOTE_PURGE_INTERVAL_SECONDS: ${RIDGENOTE_PURGE_INTERVAL_SECONDS:-86400}
+    # Run this container as RidgeNote's background Trash purge scheduler.
     command: ["python", "manage.py", "run_purge_scheduler"]
     depends_on:
       postgres:
@@ -100,7 +101,8 @@ services:
 
   # RidgeNote database.
   postgres:
-    image: postgres:17.10-bookworm@sha256:17b6c778de50f4bb9a878c36e736110fbcd9b7020377d6fdfdf20f7c0347e40a
+    container_name: ridgenote-postgres
+    image: postgres:17-bookworm
     environment:
       # Sourced from the single user-facing RIDGENOTE_DATABASE_NAME/USER/
       # PASSWORD -- POSTGRES_DB/USER/PASSWORD themselves are internal

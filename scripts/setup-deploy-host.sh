@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Prepare a clean standalone RidgeNote deployment directory: create and
-# secure persistent directories, derive PostgreSQL's numeric UID/GID from
-# the exact pinned image, initialize .env (never overwriting an existing
-# one), and validate the resulting Compose configuration.
+# secure persistent directories, apply the approved V1 PostgreSQL data
+# ownership (999:999 -- see deploy/README.md's "Create and prepare
+# PostgreSQL's persistent storage" step), initialize .env (never
+# overwriting an existing one), and validate the resulting Compose
+# configuration.
 #
 # This script never starts RidgeNote, never runs migrations, and never
 # creates an administrator -- those remain explicit, separate steps.
@@ -17,7 +19,7 @@
 #     --external-url URL --validate-only
 #
 # Requires the target directory to already contain exactly the three
-# source-free deployment files (docker-compose.yml, .env.example,
+# source-free deployment files (docker-compose.yml, env.example,
 # README.md), placed there separately -- this script does not fetch them.
 
 set -euo pipefail
@@ -34,7 +36,7 @@ RidgeNote, never runs migrations, never creates an administrator.
 
 Required:
   --deploy-dir DIR    Path to the directory already containing
-                       docker-compose.yml, .env.example, and README.md.
+                       docker-compose.yml, env.example, and README.md.
   --host HOST          LAN hostname or IP this instance is reached at.
   --external-url URL   Full URL this instance is reached at, e.g.
                        http://192.0.2.10:8000
@@ -135,7 +137,7 @@ esac
 
 if [[ ! -d "$DEPLOY_DIR" ]]; then
   echo "ERROR: deployment directory does not exist: $DEPLOY_DIR" >&2
-  echo "Create it and place docker-compose.yml, .env.example, and README.md" >&2
+  echo "Create it and place docker-compose.yml, env.example, and README.md" >&2
   echo "in it first (see deploy/README.md)." >&2
   exit 1
 fi
@@ -154,7 +156,7 @@ case "$RESOLVED_DEPLOY_DIR" in
 esac
 DEPLOY_DIR="$RESOLVED_DEPLOY_DIR"
 
-for required_file in docker-compose.yml .env.example README.md; do
+for required_file in docker-compose.yml env.example README.md; do
   path="$DEPLOY_DIR/$required_file"
   if [[ ! -f "$path" ]]; then
     echo "ERROR: required deployment file missing: $path" >&2
@@ -179,11 +181,17 @@ for maybe_symlink in "$DATA_DIR" "$PG_DATA_DIR" "$BACKUPS_DIR" "$PG_BACKUPS_DIR"
 done
 
 ENV_FILE="$DEPLOY_DIR/.env"
-ENV_EXAMPLE="$DEPLOY_DIR/.env.example"
+ENV_EXAMPLE="$DEPLOY_DIR/env.example"
 
 # ---------------------------------------------------------------------
-# PostgreSQL image discovery (Compose-rendered, not brittle YAML regex)
+# PostgreSQL image sanity check (Compose-rendered, not brittle YAML regex)
 # ---------------------------------------------------------------------
+#
+# Only confirms docker-compose.yml resolves to exactly one, genuinely
+# `postgres:`-named image -- catching a corrupted/misedited Compose
+# file -- not a specific tag or digest. The approved V1 image
+# (`postgres:17-bookworm`, a floating tag within PostgreSQL major 17)
+# is deliberately not digest-pinned, so no digest is required here.
 
 discover_postgres_image() {
   local env_source="$1"
@@ -198,9 +206,9 @@ discover_postgres_image() {
     exit 1
   fi
   case "$image" in
-    postgres:*@sha256:*) ;;
+    postgres:*) ;;
     *)
-      echo "ERROR: discovered PostgreSQL image is not a digest-pinned 'postgres:' image: $image" >&2
+      echo "ERROR: discovered image is not a 'postgres:' image: $image" >&2
       exit 1
       ;;
   esac
@@ -208,7 +216,7 @@ discover_postgres_image() {
 }
 
 # The pre-.env discovery step only needs a syntactically valid env file for
-# Compose's own variable interpolation -- .env.example already supplies
+# Compose's own variable interpolation -- env.example already supplies
 # non-secret placeholder values for every variable Compose reads, and the
 # postgres image itself is a literal, unparameterized string in
 # docker-compose.yml, so no real secret is required merely to discover it.
@@ -216,31 +224,20 @@ POSTGRES_IMAGE="$(discover_postgres_image "$ENV_EXAMPLE")"
 echo "Discovered PostgreSQL image: $POSTGRES_IMAGE"
 
 # ---------------------------------------------------------------------
-# PostgreSQL numeric UID/GID discovery
+# PostgreSQL data ownership -- fixed 999:999
 # ---------------------------------------------------------------------
-
-discover_postgres_uid_gid() {
-  local image="$1"
-  local uid gid
-  uid="$(docker run --rm --entrypoint /usr/bin/id "$image" -u postgres 2>/dev/null || true)"
-  gid="$(docker run --rm --entrypoint /usr/bin/id "$image" -g postgres 2>/dev/null || true)"
-  if ! [[ "$uid" =~ ^[0-9]+$ ]]; then
-    echo "ERROR: could not determine a numeric PostgreSQL UID from $image (got: '$uid')." >&2
-    exit 1
-  fi
-  if ! [[ "$gid" =~ ^[0-9]+$ ]]; then
-    echo "ERROR: could not determine a numeric PostgreSQL GID from $image (got: '$gid')." >&2
-    exit 1
-  fi
-  printf '%s:%s' "$uid" "$gid"
-}
-
-POSTGRES_UID_GID="$(discover_postgres_uid_gid "$POSTGRES_IMAGE")"
-POSTGRES_UID="${POSTGRES_UID_GID%%:*}"
-POSTGRES_GID="${POSTGRES_UID_GID##*:}"
-echo "PostgreSQL runtime UID:GID = ${POSTGRES_UID}:${POSTGRES_GID}"
-echo "(Host-local account names are irrelevant here -- only these numeric" \
-     "values matter for the bind-mounted data directory's ownership.)"
+#
+# The approved V1 deployment contract hardcodes the PostgreSQL data
+# directory's ownership to 999:999, the standard numeric user/group the
+# official `postgres:17-bookworm` image runs as -- see deploy/README.md's
+# "Create and prepare PostgreSQL's persistent storage" step. This
+# deliberately replaces an earlier dynamic `docker run --entrypoint id`
+# discovery approach; that approach existed to avoid ever assuming a
+# fixed number, but the real-world deployment rehearsal confirmed 999:999
+# is the correct, unmissable value to instruct directly.
+POSTGRES_UID=999
+POSTGRES_GID=999
+echo "PostgreSQL data ownership target: ${POSTGRES_UID}:${POSTGRES_GID}"
 
 # =======================================================================
 # --validate-only: read-only verification, no mutation
@@ -267,11 +264,6 @@ if [[ "$VALIDATE_ONLY" -eq 1 ]]; then
   [[ "$env_mode" -le 600 ]]
   check ".env mode is 600 or narrower (found: $env_mode)" $?
 
-  # RIDGENOTE_IMAGE has no "unresolved" state to check for -- the
-  # shipped .env.example default is already a real, usable image
-  # reference (see deploy/README.md, "Image tags"), not a placeholder
-  # requiring replacement. Only the generated-secret placeholders are
-  # checked here.
   if grep -Eq 'replace-with-' "$ENV_FILE"; then
     check "no unresolved secret placeholder remains in .env" 1
   else
@@ -279,7 +271,7 @@ if [[ "$VALIDATE_ONLY" -eq 1 ]]; then
   fi
 
   required_vars=(
-    RIDGENOTE_IMAGE RIDGENOTE_SECRET_KEY RIDGENOTE_DEBUG
+    RIDGENOTE_SECRET_KEY RIDGENOTE_DEBUG
     RIDGENOTE_ALLOWED_HOSTS RIDGENOTE_CSRF_TRUSTED_ORIGINS
     RIDGENOTE_EXTERNAL_URL RIDGENOTE_DATABASE_NAME
     RIDGENOTE_DATABASE_USER RIDGENOTE_DATABASE_PASSWORD
@@ -327,8 +319,8 @@ if [[ "$VALIDATE_ONLY" -eq 1 ]]; then
   check "RIDGENOTE_DEBUG is disabled (0)" $?
 
   purge_value="$(grep -E '^RIDGENOTE_PURGE_ENABLED=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
-  [[ "$purge_value" == "false" ]]
-  check "RIDGENOTE_PURGE_ENABLED remains disabled by default" $?
+  [[ "$purge_value" == "true" ]]
+  check "RIDGENOTE_PURGE_ENABLED remains enabled by default" $?
 
   if docker compose --project-directory "$DEPLOY_DIR" --env-file "$ENV_FILE" config --quiet 2>/dev/null; then
     check "docker compose config --quiet succeeds" 0
@@ -418,12 +410,7 @@ chmod 600 "$ENV_FILE"
 echo ".env created (mode 600). Generated secret values are not printed."
 
 # Only sanity-check the placeholders this script itself is responsible for
-# resolving (the generated secrets). RIDGENOTE_IMAGE's own placeholder
-# (sha-0000000) is deliberately left as-is here -- selecting the actual
-# image tag remains the operator's own later, explicit step (see
-# deploy/README.md's "Image reference" section), not something this
-# directory/secret-preparation helper decides. --validate-only (run once
-# that step is also complete) checks for it.
+# resolving (the generated secrets).
 if grep -Eq 'replace-with-' "$ENV_FILE"; then
   echo "ERROR: .env still contains an unresolved 'replace-with-' placeholder after generation." >&2
   echo "This indicates a template/script mismatch -- not proceeding." >&2
@@ -453,10 +440,6 @@ echo "  - $PG_DATA_DIR (${POSTGRES_UID}:${POSTGRES_GID}, 700)"
 echo "  - $BACKUPS_DIR (operator-owned, 700)"
 echo "  - $PG_BACKUPS_DIR (operator-owned, 700)"
 echo "  - .env created (600), Compose configuration validated"
-echo ""
-echo "RIDGENOTE_IMAGE in .env was carried through unchanged from .env.example"
-echo "-- review it and update it if you want a different image reference"
-echo "(see deploy/README.md, 'Image tags')."
 echo ""
 echo "RidgeNote was NOT started. Next steps (run manually):"
 echo ""
