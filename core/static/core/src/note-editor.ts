@@ -220,6 +220,16 @@ export interface SaveSnapshot {
   title: string;
 }
 
+/** See `NoteSaveController.flushPendingSave()`'s own comment. */
+export interface FlushPendingSaveOptions {
+  suppressIdleActivity?: boolean;
+}
+
+/** Header added to the autosave request only when
+ * `suppressIdleActivity` is set -- checked (not enforced) by the
+ * backend in `accounts.services.should_refresh_session_activity`. */
+export const IDLE_WARNING_SAVE_HEADER = "X-RidgeNote-Session-Idle-Save";
+
 export interface SaveSuccessResponse {
   modified_at: string;
   ok: true;
@@ -1270,13 +1280,23 @@ export class NoteSaveController {
     return this.state;
   }
 
-  async flushPendingSave(): Promise<void> {
+  /**
+   * `options.suppressIdleActivity` is set only by the session-idle
+   * warning's own flush-if-dirty call (see session-idle.ts) -- it adds
+   * a header the backend treats as *not* activity (see
+   * `accounts.services.should_refresh_session_activity`), so a save
+   * that happens to occur right at the idle-warning threshold cannot
+   * itself silently extend the session. Every other caller (Print,
+   * ordinary autosave) omits it, leaving today's behavior -- a normal
+   * save legitimately refreshing the session -- completely unchanged.
+   */
+  async flushPendingSave(options: FlushPendingSaveOptions = {}): Promise<void> {
     if (this.state === "conflicted") {
       return;
     }
     this.pendingPrint = false;
     this.cancelRetryTimer();
-    await this.requestSaveNow();
+    await this.requestSaveNow(options);
   }
 
   handleDocumentEdited(): void {
@@ -1678,7 +1698,9 @@ export class NoteSaveController {
     return this.inflightFreshnessPromise;
   }
 
-  private async requestSaveNow(): Promise<void> {
+  private async requestSaveNow(
+    options: FlushPendingSaveOptions = {},
+  ): Promise<void> {
     if (this.state === "conflicted") {
       return;
     }
@@ -1691,7 +1713,7 @@ export class NoteSaveController {
     }
 
     this.clearAutosaveTimers();
-    return this.startSave(snapshot, this.currentVersion);
+    return this.startSave(snapshot, this.currentVersion, options);
   }
 
   private renderState(): void {
@@ -1791,15 +1813,20 @@ export class NoteSaveController {
   private async sendSaveRequest(
     snapshot: SaveSnapshot,
     version: number,
+    options: FlushPendingSaveOptions = {},
   ): Promise<AutosaveResponse> {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-CSRFToken": this.options.csrfToken,
+    };
+    if (options.suppressIdleActivity) {
+      headers[IDLE_WARNING_SAVE_HEADER] = "1";
+    }
     const response = await this.options.fetchFn(this.options.autosaveUrl, {
       method: "POST",
       body: JSON.stringify(buildAutosaveRequestPayload(snapshot, version)),
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-CSRFToken": this.options.csrfToken,
-      },
+      headers,
     });
     const payload = (await response.json()) as AutosaveResponse;
     if (response.status >= 500 || response.status === 401) {
@@ -1880,6 +1907,7 @@ export class NoteSaveController {
   private async startSave(
     snapshot: SaveSnapshot,
     version: number,
+    options: FlushPendingSaveOptions = {},
   ): Promise<void> {
     this.clearAutosaveTimers();
     this.setState("saving");
@@ -1893,6 +1921,7 @@ export class NoteSaveController {
       this.inflightSavePromise = this.sendSaveRequest(
         attemptSnapshot,
         attemptVersion,
+        options,
       )
         .then(async (response) => {
           if (response.ok) {
@@ -2095,17 +2124,19 @@ export class NoteSaveController {
   }
 }
 
-export function initNoteEditorDocument(doc: Document = document): void {
+export function initNoteEditorDocument(
+  doc: Document = document,
+): NoteSaveController | null {
   const root = doc.querySelector<HTMLElement>("[data-note-editor-root]");
   if (!root || root.dataset.initialized === "true") {
-    return;
+    return null;
   }
 
   const inputId = root.dataset.noteInputId;
   const documentId = root.dataset.noteDocumentId;
   const schemaVersion = Number(root.dataset.noteSchemaVersion ?? "0");
   if (!inputId || !documentId || !canInitializeNoteEditor(schemaVersion)) {
-    return;
+    return null;
   }
 
   const hiddenInput = doc.getElementById(inputId) as HTMLInputElement | null;
@@ -2167,7 +2198,7 @@ export function initNoteEditorDocument(doc: Document = document): void {
     !reloadButton ||
     !copyLocalButton
   ) {
-    return;
+    return null;
   }
 
   const initialDocument = JSON.parse(documentNode.textContent ?? "{}");
@@ -2201,7 +2232,7 @@ export function initNoteEditorDocument(doc: Document = document): void {
     !csrfToken
   ) {
     editor.destroy();
-    return;
+    return null;
   }
 
   installFormattingToolbarToggle(toolbarToggle, toolbar);
@@ -2314,4 +2345,5 @@ export function initNoteEditorDocument(doc: Document = document): void {
   });
 
   root.dataset.initialized = "true";
+  return controller;
 }

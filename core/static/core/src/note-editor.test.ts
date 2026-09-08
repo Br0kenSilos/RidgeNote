@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   AUTOSAVE_DEBOUNCE_MS,
   FRESHNESS_CHECK_INTERVAL_MS,
+  IDLE_WARNING_SAVE_HEADER,
   MAX_PENDING_SAVE_MS,
   NoteSaveController,
   RETRY_DELAY_MS,
@@ -2026,6 +2027,64 @@ describe("NoteSaveController", () => {
     expect(context.controller.getState()).toBe("clean");
     expect(context.statusRegion.textContent).toBe("Saved");
     expect(context.versionInput.value).toBe("2");
+  });
+
+  it("omits the idle-save header on an ordinary autosave", async () => {
+    const context = createSaveControllerContext([
+      createResponse(200, {
+        ok: true,
+        title: "Generated title",
+        version: 2,
+        modified_at: "2026-06-29T12:00:00Z",
+      }),
+    ]);
+
+    context.controller.handleDocumentEdited();
+    context.scheduler.runDelay(AUTOSAVE_DEBOUNCE_MS);
+    await flushAsyncWork();
+
+    expect(context.fetchCalls).toHaveLength(1);
+    expect(context.fetchCalls[0].headers[IDLE_WARNING_SAVE_HEADER]).toBe(
+      undefined,
+    );
+  });
+
+  it("omits the idle-save header on an ordinary flushPendingSave() (e.g. Print)", async () => {
+    const context = createSaveControllerContext([
+      createResponse(200, {
+        ok: true,
+        title: "Generated title",
+        version: 2,
+        modified_at: "2026-06-29T12:00:00Z",
+      }),
+    ]);
+
+    context.controller.handleDocumentEdited();
+    await context.controller.flushPendingSave();
+    await flushAsyncWork();
+
+    expect(context.fetchCalls).toHaveLength(1);
+    expect(context.fetchCalls[0].headers[IDLE_WARNING_SAVE_HEADER]).toBe(
+      undefined,
+    );
+  });
+
+  it("adds the idle-save header only when flushPendingSave is called with suppressIdleActivity", async () => {
+    const context = createSaveControllerContext([
+      createResponse(200, {
+        ok: true,
+        title: "Generated title",
+        version: 2,
+        modified_at: "2026-06-29T12:00:00Z",
+      }),
+    ]);
+
+    context.controller.handleDocumentEdited();
+    await context.controller.flushPendingSave({ suppressIdleActivity: true });
+    await flushAsyncWork();
+
+    expect(context.fetchCalls).toHaveLength(1);
+    expect(context.fetchCalls[0].headers[IDLE_WARNING_SAVE_HEADER]).toBe("1");
   });
 
   it("calls onTitleSaved with the saved title after a successful save", async () => {

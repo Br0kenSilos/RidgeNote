@@ -10533,3 +10533,68 @@ a.note-list__title:focus-visible {
     font-size: var(--font-size-control-sm);
   }
 }
+
+/* Session idle warning banner and expired-session dialog -- see
+   core/static/core/src/session-idle.ts. Fixed, low-intrusion corner
+   banner (not a dialog) since the warning must never block or steal
+   focus from ongoing work -- it dismisses automatically once ordinary
+   RidgeNote activity (autosave, navigation, a save) genuinely extends
+   the session server-side, or explicitly via the "Stay signed in"
+   button below, which is the only click this banner itself responds
+   to. */
+.session-idle-warning {
+  position: fixed;
+  z-index: 40;
+  right: var(--space-14);
+  bottom: var(--space-14);
+  max-width: min(22rem, calc(100vw - var(--space-14) * 2));
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  box-shadow: var(--shadow-panel);
+  padding: var(--space-10) var(--space-14);
+}
+
+.session-idle-warning__message {
+  margin: 0 0 var(--space-8);
+  font-size: var(--font-size-body-sm);
+}
+
+.session-idle-warning__stay-signed-in {
+  min-height: auto;
+  padding: var(--space-4) var(--space-11);
+  font-size: var(--font-size-control-sm);
+}
+
+/* Same small centered dialog shape as `.delete-confirm-dialog` (see
+   that block's own comment for why this codebase gives conceptually
+   distinct dialogs their own rules rather than a shared class), but
+   using the danger/strong palette. Abnormal-expiry case only (see
+   base.html's own comment) -- the normal, clean-editor case never
+   shows this dialog, it navigates to accounts:session_expired instead. */
+.session-expired-unsaved-dialog {
+  padding: var(--space-18);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-panel);
+  width: min(26rem, calc(100vw - var(--space-18) * 2));
+}
+
+.session-expired-unsaved-dialog::backdrop {
+  background: rgb(28 31 35 / 30%);
+}
+
+.session-expired-unsaved-dialog h2 {
+  margin: 0 0 var(--space-8);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-strong);
+  color: var(--color-danger-text-strong);
+}
+
+.session-expired-unsaved-dialog p {
+  margin: 0 0 var(--space-14);
+  color: var(--color-text-body);
+  font-size: var(--font-size-body-sm);
+}

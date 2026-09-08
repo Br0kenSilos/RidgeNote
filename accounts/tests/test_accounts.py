@@ -1,7 +1,7 @@
 import os
 import subprocess
 import sys
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from threading import Thread
 from unittest.mock import patch
@@ -923,6 +923,202 @@ def test_session_status_does_not_refresh_idle_activity():
 
     assert response.status_code == 200
     assert client.session[services.LAST_ACTIVITY_KEY] == old_activity
+
+
+@pytest.mark.django_db
+@override_settings(RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=120, RIDGENOTE_SESSION_WARNING_SECONDS=30)
+def test_session_status_reports_authoritative_expires_at():
+    user = create_account("expires-at-user")
+    client = authenticated_client(user)
+    session = client.session
+    activity = (timezone.now() - timedelta(seconds=10)).timestamp()
+    session[services.LAST_ACTIVITY_KEY] = activity
+    session.save()
+
+    response = client.get(reverse("accounts:session_status"))
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["authenticated"] is True
+    expected_expires_at = datetime.fromtimestamp(activity + 120, tz=UTC)
+    assert datetime.fromisoformat(payload["expires_at"]) == expected_expires_at
+
+
+@pytest.mark.django_db
+def test_session_status_expires_at_is_none_without_recorded_activity():
+    user = create_account("no-activity-user")
+    client = authenticated_client(user)
+    session = client.session
+    del session[services.LAST_ACTIVITY_KEY]
+    session.save()
+
+    response = client.get(reverse("accounts:session_status"))
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["authenticated"] is True
+    assert payload["expires_at"] is None
+
+
+@pytest.mark.django_db
+def test_session_status_401_response_has_no_expires_at():
+    response = Client().get(reverse("accounts:session_status"))
+
+    assert response.status_code == 401
+    payload = response.json()
+    assert payload == {"authenticated": False}
+
+
+@pytest.mark.django_db
+def test_session_keepalive_requires_authentication():
+    response = Client().post(reverse("accounts:session_keepalive"))
+
+    assert response.status_code == 401
+    assert response.json() == {"authenticated": False}
+
+
+@pytest.mark.django_db
+def test_session_keepalive_requires_post():
+    user = create_account("keepalive-get-user")
+    response = authenticated_client(user).get(reverse("accounts:session_keepalive"))
+
+    assert response.status_code == 405
+
+
+@pytest.mark.django_db
+@override_settings(RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=120, RIDGENOTE_SESSION_WARNING_SECONDS=30)
+def test_session_keepalive_refreshes_activity_and_returns_a_later_expires_at():
+    """The exact mechanism "Stay signed in" relies on: unlike
+    `session_status`, this endpoint is a deliberate action that must
+    genuinely extend the session through the same authoritative
+    mechanism any other normal request already uses."""
+    user = create_account("keepalive-user")
+    client = authenticated_client(user)
+    stale_activity = (timezone.now() - timedelta(seconds=100)).timestamp()
+    session = client.session
+    session[services.LAST_ACTIVITY_KEY] = stale_activity
+    session.save()
+    stale_response = client.get(reverse("accounts:session_status"))
+    stale_expires_at = datetime.fromisoformat(stale_response.json()["expires_at"])
+
+    response = client.post(
+        reverse("accounts:session_keepalive"),
+        HTTP_ACCEPT="application/json",
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["authenticated"] is True
+    new_expires_at = datetime.fromisoformat(payload["expires_at"])
+    assert new_expires_at > stale_expires_at
+    # The session's own recorded activity was actually updated, not
+    # just reflected in this one response.
+    refreshed_activity = client.session[services.LAST_ACTIVITY_KEY]
+    assert refreshed_activity > stale_activity
+
+
+@pytest.mark.django_db
+def test_session_keepalive_requires_csrf_token_when_csrf_checks_are_enabled():
+    user = create_account("csrf-keepalive-user")
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(user)
+    session = client.session
+    session[services.SESSION_GENERATION_KEY] = user.session_generation
+    session[services.LAST_ACTIVITY_KEY] = timezone.now().timestamp()
+    session.save()
+
+    response = client.post(reverse("accounts:session_keepalive"))
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_session_expired_page_renders_for_an_anonymous_visitor():
+    response = Client().get(reverse("accounts:session_expired"))
+
+    assert response.status_code == 200
+    assert b"Session expired" in response.content
+    login_url = reverse("accounts:login").encode()
+    assert login_url in response.content
+
+
+@pytest.mark.django_db
+def test_session_expired_page_renders_even_for_an_authenticated_visitor():
+    user = create_account("still-logged-in-user")
+    client = authenticated_client(user)
+
+    response = client.get(reverse("accounts:session_expired"))
+
+    assert response.status_code == 200
+    assert b"Session expired" in response.content
+
+
+@pytest.mark.django_db
+def test_session_expired_page_logs_out_a_still_authenticated_visitor():
+    """Reproduces the exact race behind the reported "Sign in again"
+    defect: a request can reach `/session/expired/` while
+    `SessionSecurityMiddleware`'s own per-request check still considers
+    the session valid (the frontend's own read of the authoritative
+    deadline can be a moment ahead of that check). Regardless of why
+    this page was reached, landing on it must still guarantee the
+    session is actually gone."""
+    user = create_account("race-user")
+    client = authenticated_client(user)
+    assert client.get(reverse("accounts:session_status")).status_code == 200
+
+    response = client.get(reverse("accounts:session_expired"))
+
+    assert response.status_code == 200
+    assert client.get(reverse("accounts:session_status")).status_code == 401
+    assert AuditEvent.objects.filter(
+        event_type=AuditEvent.EVENT_LOGOUT,
+        actor=user,
+        target_user=user,
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_session_expired_page_is_anonymous_for_a_previously_authenticated_visitor():
+    # An admin account so `home` redirects to login rather than setup
+    # -- create_account() alone leaves no admin, and login_view() itself
+    # redirects anonymous visitors to /setup/ in that case, which would
+    # mask the assertion this test actually cares about.
+    user = create_admin("anon-after-expiry-admin")
+    client = authenticated_client(user)
+
+    client.get(reverse("accounts:session_expired"))
+    response = client.get(reverse("home"))
+
+    assert response.status_code == 302
+    assert response.url.startswith(reverse("accounts:login"))
+
+
+@pytest.mark.django_db
+def test_login_after_session_expired_page_shows_the_form_not_a_redirect():
+    """The exact failure mode reported: clicking "Sign in again" must
+    show the login form and require credentials again, never silently
+    resume the old session."""
+    user = create_admin("relogin-admin")
+    client = authenticated_client(user)
+
+    client.get(reverse("accounts:session_expired"))
+    response = client.get(reverse("accounts:login"))
+
+    assert response.status_code == 200
+    assert b'name="password"' in response.content
+
+
+@pytest.mark.django_db
+def test_session_expired_page_does_not_refresh_or_extend_idle_activity():
+    user = create_account("no-extend-user")
+    client = authenticated_client(user)
+
+    client.get(reverse("accounts:session_expired"))
+
+    # The session was fully logged out (flushed), so there is no
+    # activity timestamp left to have been refreshed/extended by this
+    # request -- confirming the visit itself never re-marks activity.
+    assert services.LAST_ACTIVITY_KEY not in client.session
 
 
 @pytest.mark.django_db

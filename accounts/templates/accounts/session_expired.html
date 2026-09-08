@@ -1,0 +1,21 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Session Expired - RidgeNote{% endblock %}
+{% block html_attrs %}data-theme="dark"{% endblock %}
+{% block body_attrs %}data-theme="dark" class="login-page"{% endblock %}
+{% block main_class %}content-shell login-shell{% endblock %}
+
+{% block content %}
+  <section class="login-panel" aria-labelledby="session-expired-title">
+    <div class="login-panel__brand">
+      <p class="login-panel__product"><span class="brand-mark">{% include "branding/ridgenote-mark.svg" %}</span>RidgeNote</p>
+      <h1 id="session-expired-title" class="login-panel__title">Session expired</h1>
+      <p class="login-panel__subtitle">
+        You were signed out after a period of inactivity.
+      </p>
+    </div>
+    <div class="login-panel__actions">
+      <a class="button-link login-panel__submit" href="{% url 'accounts:login' %}">Sign in again</a>
+    </div>
+  </section>
+{% endblock %}

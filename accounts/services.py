@@ -945,11 +945,24 @@ def mark_session_activity(request: HttpRequest) -> None:
     request.session[LAST_ACTIVITY_KEY] = timezone.now().timestamp()
 
 
-def session_is_expired(request: HttpRequest) -> bool:
+def session_expires_at(request: HttpRequest) -> float | None:
+    """The authoritative idle-expiry deadline for this session, as a Unix
+    timestamp -- `None` when no activity has been recorded yet (a fresh
+    session with nothing to expire). This is the single computation
+    `session_is_expired()` below and `accounts.views.session_status`
+    both build on, so there is exactly one place that derives "when does
+    this session go idle" from `LAST_ACTIVITY_KEY` and
+    `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS`."""
     last_activity = request.session.get(LAST_ACTIVITY_KEY)
     if last_activity is None:
+        return None
+    return float(last_activity) + settings.RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS
+
+
+def session_is_expired(request: HttpRequest) -> bool:
+    expires_at = session_expires_at(request)
+    if expires_at is None:
         return False
-    expires_at = float(last_activity) + settings.RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS
     return timezone.now().timestamp() > expires_at
 
 
@@ -967,6 +980,23 @@ def should_refresh_session_activity(request: HttpRequest) -> bool:
     if request.path == "/health/" or request.path.startswith(static_url_path_prefix()):
         return False
     if request.path == "/session/status/":
+        return False
+    # The note editor's own freshness check (see notes.views.note_freshness)
+    # is a background timer poll -- it fires on a fixed interval regardless
+    # of whether the user has done anything, so treating it as activity
+    # would keep an otherwise-idle session alive forever whenever a note is
+    # left open. Matches the existing `/autosave/`/`/freshness/` path-suffix
+    # convention already used by SessionSecurityMiddleware._wants_json_response.
+    if request.path.endswith("/freshness/"):
+        return False
+    # Set only by the frontend session-idle warning's own flush-if-dirty
+    # save (see core/static/core/src/session-idle.ts,
+    # IDLE_WARNING_SAVE_HEADER) -- an autosave triggered purely because
+    # the idle deadline is approaching, not because of new user
+    # interaction, must not itself push that deadline back out. An
+    # ordinary autosave from real typing never sets this header, so it
+    # continues to refresh activity exactly as before.
+    if request.META.get("HTTP_X_RIDGENOTE_SESSION_IDLE_SAVE"):
         return False
     return True
 

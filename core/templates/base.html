@@ -41,6 +41,22 @@
   <body {% block body_attrs %}data-theme="{{ RIDGENOTE_CURRENT_THEME }}"{% endblock %}>
     {% if request.user.is_authenticated %}
       <script>document.documentElement.dataset.js="true";</script>
+      {% comment %}
+      Session idle warning/expiry configuration -- see
+      core/static/core/src/session-idle.ts. Rendered only for an
+      authenticated request, from the same
+      RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS/RIDGENOTE_SESSION_WARNING_SECONDS
+      settings the backend itself enforces (accounts.context_processors.session_policy),
+      so there is exactly one source of truth for these numbers.
+      {% endcomment %}
+      <div hidden
+           data-session-idle-config
+           data-session-status-url="{% url 'accounts:session_status' %}"
+           data-session-keepalive-url="{% url 'accounts:session_keepalive' %}"
+           data-session-expired-url="{% url 'accounts:session_expired' %}"
+           data-session-idle-timeout-seconds="{{ RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS }}"
+           data-session-warning-seconds="{{ RIDGENOTE_SESSION_WARNING_SECONDS }}"
+           data-session-csrf-token="{{ csrf_token }}"></div>
     {% endif %}
     <div class="app-shell">
       {% block app_header %}
@@ -179,5 +195,53 @@
         </div>
       </form>
     </dialog>
+    {% if request.user.is_authenticated %}
+      {% comment %}
+      No generic click/keypress anywhere on the page dismisses this --
+      only the explicit "Stay signed in" button below does, and only
+      because clicking it makes a real, server-recognized request (see
+      accounts:session_keepalive) that genuinely extends the session.
+      Ordinary RidgeNote activity (typing/autosave, navigation, saves)
+      is what normally keeps a session alive; this button exists for
+      the case where none of that is happening but the user is still
+      present and wants to keep working.
+      {% endcomment %}
+      <div id="session-idle-warning"
+           class="session-idle-warning"
+           role="alert"
+           hidden>
+        <p class="session-idle-warning__message">
+          You'll be signed out in
+          <span data-session-idle-warning-countdown>0</span>
+          seconds due to inactivity.
+        </p>
+        <button type="button"
+                class="button-link session-idle-warning__stay-signed-in"
+                data-session-stay-signed-in>Stay signed in</button>
+      </div>
+      {% comment %}
+      Abnormal-expiry case only: the session expired while the active
+      note editor still had unsaved local content (the warning-time
+      save failed or conflicted -- see session-idle.ts's
+      flushNoteEditorIfDirty()/handleConfirmedExpiry()). The normal,
+      clean-editor case never shows this dialog -- it navigates
+      straight to accounts:session_expired instead, so this markup
+      exists purely to block further (silently-doomed) editing in
+      place without discarding that unsaved content, while leaving the
+      note editor's own beforeunload protection fully armed.
+      {% endcomment %}
+      <dialog id="session-expired-unsaved-dialog"
+              class="session-expired-unsaved-dialog"
+              aria-labelledby="session-expired-unsaved-dialog-title">
+        <h2 id="session-expired-unsaved-dialog-title">Session expired -- unsaved changes</h2>
+        <p>
+          You were signed out after a period of inactivity, and this
+          note has changes that could not be saved. Copy anything you
+          need before leaving this page -- it will not be saved
+          automatically.
+        </p>
+        <a class="button-link" href="{% url 'accounts:login' %}">Sign in again</a>
+      </dialog>
+    {% endif %}
   </body>
 </html>

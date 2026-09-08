@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -7,7 +8,7 @@ from accounts import services as account_services
 from accounts.models import User
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -1559,6 +1560,71 @@ def test_freshness_endpoint_returns_unsupported_schema_response():
     payload = json.loads(response.content)
     assert response.status_code == 409
     assert payload == {"ok": False, "error": "unsupported_schema"}
+
+
+@pytest.mark.django_db
+def test_freshness_check_does_not_refresh_idle_activity():
+    user = create_account("freshness-idle")
+    note = services.create_note(owner=user)
+    client = authenticated_client(user)
+    session = client.session
+    old_activity = (timezone.now() - timedelta(seconds=30)).timestamp()
+    session[account_services.LAST_ACTIVITY_KEY] = old_activity
+    session.save()
+
+    response = client.get(
+        reverse("notes:freshness", args=[note.id]),
+        {"version": note.version},
+        HTTP_ACCEPT="application/json",
+    )
+
+    assert response.status_code == 200
+    assert client.session[account_services.LAST_ACTIVITY_KEY] == old_activity
+
+
+@pytest.mark.django_db
+@override_settings(RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=60, RIDGENOTE_SESSION_WARNING_SECONDS=5)
+def test_freshness_polling_cannot_keep_an_otherwise_idle_session_alive():
+    user = create_account("freshness-poll")
+    note = services.create_note(owner=user)
+    client = authenticated_client(user)
+
+    # Real activity happened 55s ago -- not yet past the 60s idle
+    # timeout, but only 5s of margin left.
+    almost_stale = (timezone.now() - timedelta(seconds=55)).timestamp()
+    session = client.session
+    session[account_services.LAST_ACTIVITY_KEY] = almost_stale
+    session.save()
+
+    # Repeated background freshness polls (as the note editor's own
+    # 25s-interval timer would send) must succeed while not yet expired,
+    # but must never resurrect/extend the recorded activity timestamp --
+    # this is the exact assertion that would have failed before the fix,
+    # since the old code refreshed activity on every authenticated
+    # request including this one.
+    for _ in range(3):
+        poll_response = client.get(
+            reverse("notes:freshness", args=[note.id]),
+            {"version": note.version},
+            HTTP_ACCEPT="application/json",
+        )
+        assert poll_response.status_code == 200
+        assert client.session[account_services.LAST_ACTIVITY_KEY] == almost_stale
+
+    # Simulate the remaining idle margin elapsing with nothing but those
+    # background polls in between: since they never touched the activity
+    # timestamp, a real request now (past the 60s deadline) must still
+    # be rejected as idle-expired.
+    session = client.session
+    session[account_services.LAST_ACTIVITY_KEY] = (
+        timezone.now() - timedelta(seconds=61)
+    ).timestamp()
+    session.save()
+
+    response = client.get(reverse("home"))
+
+    assert response.status_code == 302
+    assert response.url == reverse("accounts:login")
 
 
 @pytest.mark.django_db

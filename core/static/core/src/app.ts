@@ -34,6 +34,7 @@ import { initTreeTitleTooltipDocument } from "./tree-title-truncation";
 import { initInvitationCopyDocument } from "./invitation-copy";
 import { initSetupMethodToggleDocument } from "./setup-method-toggle";
 import { initPaletteLabDocument } from "./palette-lab";
+import { initSessionIdleDocument } from "./session-idle";
 
 export function staticReadyText(): string {
   return "Static assets loaded";
@@ -263,7 +264,7 @@ if (typeof document !== "undefined") {
   initNewFolderFormsDocument(document);
   initThemeQuickSelectorDocument(document);
   initTooltipPlacementDocument(document);
-  initNoteEditorDocument(document);
+  const noteSaveController = initNoteEditorDocument(document);
   initTagErrorDismissDocument(document);
   initTagNameUppercaseDocument(document);
   // Runs after initTagNameUppercaseDocument so a query typed into the Add
@@ -285,4 +286,5 @@ if (typeof document !== "undefined") {
   initInvitationCopyDocument(document);
   initSetupMethodToggleDocument(document);
   initPaletteLabDocument(document);
+  initSessionIdleDocument(document, { noteEditor: noteSaveController });
 }

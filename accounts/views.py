@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from core.palette_lab import (
     PALETTE_LAB_CANDIDATES,
     PALETTE_LAB_CATEGORIES,
@@ -212,6 +214,12 @@ def logout_view(request: HttpRequest) -> HttpResponse:
     return redirect("accounts:login")
 
 
+def _expires_at_isoformat(expires_at: float | None) -> str | None:
+    if expires_at is None:
+        return None
+    return datetime.fromtimestamp(expires_at, tz=UTC).isoformat()
+
+
 @require_GET
 def session_status(request: HttpRequest) -> JsonResponse:
     if not request.user.is_authenticated:
@@ -221,8 +229,77 @@ def session_status(request: HttpRequest) -> JsonResponse:
             "authenticated": True,
             "idle_timeout_seconds": settings.RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS,
             "warning_seconds": settings.RIDGENOTE_SESSION_WARNING_SECONDS,
+            # Authoritative deadline (see accounts.services.session_expires_at,
+            # the same computation SessionSecurityMiddleware itself uses) --
+            # lets the frontend resynchronize to the server's true remaining
+            # time instead of restarting a full idle-timeout cycle whenever
+            # it finds the session still valid. `None` only when no activity
+            # has been recorded yet for this session.
+            "expires_at": _expires_at_isoformat(services.session_expires_at(request)),
         }
     )
+
+
+@require_POST
+def session_keepalive(request: HttpRequest) -> JsonResponse:
+    """The "Stay signed in" action from the idle-warning banner (see
+    core/static/core/src/session-idle.ts). Unlike `session_status` (a
+    passive, side-effect-free read that is deliberately excluded from
+    `accounts.services.should_refresh_session_activity` so it is safe
+    to poll repeatedly in the background), this endpoint is reached
+    only from a deliberate user click -- it is *not* on that exclusion
+    list, so an ordinary authenticated POST here refreshes activity
+    exactly the same way any other normal RidgeNote request already
+    does; no special-casing was needed to make that true. Activity is
+    marked explicitly here (rather than relying solely on
+    `SessionSecurityMiddleware`'s own post-view refresh, which runs
+    after this view has already built its response) so the returned
+    `expires_at` reflects the extension this very request just made."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"authenticated": False}, status=401)
+    services.mark_session_activity(request)
+    return JsonResponse(
+        {
+            "authenticated": True,
+            "expires_at": _expires_at_isoformat(services.session_expires_at(request)),
+        }
+    )
+
+
+def session_expired_page(request: HttpRequest) -> HttpResponse:
+    """A dedicated, standalone landing page for idle-expired sessions
+    (see core/static/core/src/session-idle.ts). Unconditionally ends
+    the current authenticated session before rendering -- the frontend
+    navigates here based on its own best-effort read of the server's
+    authoritative deadline (`accounts:session_status`'s `expires_at`),
+    which can race SessionSecurityMiddleware's own per-request expiry
+    check right at the boundary: a request landing a moment before the
+    exact deadline is legitimately still authenticated as far as that
+    middleware check is concerned, even though the frontend already
+    decided the session was over. Reaching this page must still
+    guarantee the session is actually gone regardless of that race --
+    otherwise "Sign in again" can silently resume the still-live
+    session instead of showing the login form. `logout()` on an
+    already-anonymous request further down would be a safe no-op, but
+    the explicit `is_authenticated` guard avoids churning a session for
+    a visitor who was never logged in at all, and mirrors
+    `logout_view`'s own existing audit-then-logout ordering (`actor`
+    must be captured before `logout()` clears `request.user`).
+
+    Renders anonymously either way. Carries no note editor,
+    session-idle timers, autosave, or freshness polling of any kind --
+    base.html's own `{% if request.user.is_authenticated %}` guards
+    ensure none of that is rendered here once the visitor's session is
+    gone."""
+    if request.user.is_authenticated:
+        services.record_audit_event(
+            AuditEvent.EVENT_LOGOUT,
+            actor=request.user,
+            target_user=request.user,
+            request=request,
+        )
+        logout(request)
+    return render(request, "accounts/session_expired.html")
 
 
 @login_required
