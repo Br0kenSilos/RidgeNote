@@ -2,17 +2,39 @@
 
 ## Release status
 
-RidgeNote v1.0.0 is the first public release. The canonical public
-source repository is
-[`https://github.com/Br0kenSilos/RidgeNote`](https://github.com/Br0kenSilos/RidgeNote),
-tagged `v1.0.0`. The canonical release image is
-`ghcr.io/br0kensilos/ridgenote:v1.0.0`, with a current stable
-convenience tag at `ghcr.io/br0kensilos/ridgenote:latest` and an
-immutable per-build provenance tag at
-`ghcr.io/br0kensilos/ridgenote:sha-12d948e`. All three currently
-resolve to digest
-`sha256:4b5db81629f0380751b782eed20eb72f629c0746d39607ac62768248b96505f3`,
-built for `linux/amd64`.
+RidgeNote v1.0.0 was the first public release, tagged `v1.0.0` and
+built from commit `12d948e`. **RidgeNote v1.0.1 is now the current V1
+patch release**, tagged `v1.0.1` and built from commit `257eee0`. It
+fixes an authoritative session-idle/session-expiry defect found during
+real deployment rehearsal (v1.0.0 did not include this fix) and
+includes the finalized standalone deployment package (`deploy/`
+Compose bundle, Quick Deploy procedure, and
+[`docs/CONFIGURATION.md`](CONFIGURATION.md)).
+
+The canonical public source repository is
+[`https://github.com/Br0kenSilos/RidgeNote`](https://github.com/Br0kenSilos/RidgeNote).
+The canonical release image is `ghcr.io/br0kensilos/ridgenote:v1.0.1`,
+with equivalent currently published tags `sha-257eee0` (immutable
+per-build provenance) and `latest` (current stable convenience tag).
+All three currently resolve to digest
+`sha256:f115caff1b9e41ea000881ff2cc26cad1925878ab47595a6fd1b78a99da7c517`,
+built for `linux/amd64`. Anonymous (unauthenticated) GHCR pull access
+has been verified for this image.
+
+A GitHub Release for v1.0.1 is published at
+[`github.com/Br0kenSilos/RidgeNote/releases/tag/v1.0.1`](https://github.com/Br0kenSilos/RidgeNote/releases/tag/v1.0.1)
+and is marked as the repository's current/latest release. It carries
+five assets -- `docker-compose.yml`, `env.example`, `README.md`,
+`ridgenote-v1.0.1-deploy.zip`, and `SHA256SUMS` -- each verified by
+downloading it back and confirming checksum and byte-for-byte identity
+against the published source.
+
+At this point in the release process, the source repository itself
+**remains private**, and release immutability has **not** yet been
+enabled -- both are deliberate, still-pending steps. A final public/
+anonymous deployment acceptance pass, using the actual published
+release artifacts rather than working-tree copies, is still pending
+and will occur after repository visibility changes.
 
 ## What RidgeNote V1 is
 
@@ -53,7 +75,9 @@ default -- not a document-versioning system.
 ## Deployment model
 
 - Docker Compose, three services: `web`, `scheduler`, and `postgres`.
-- PostgreSQL 17, pinned by digest.
+- PostgreSQL 17 (`postgres:17-bookworm`, a floating tag within major
+  17, receiving ordinary 17.x image/security updates on every
+  `docker compose pull`).
 - Database migrations are applied **automatically at startup** by both
   `web` and `scheduler`, coordinated by a PostgreSQL advisory lock --
   there is no separate manual migration step in the normal install or
@@ -62,8 +86,8 @@ default -- not a document-versioning system.
   ephemeral container filesystem.
 - V1 container images are built and tested for **`linux/amd64`** only.
 - Canonical public source: `https://github.com/Br0kenSilos/RidgeNote`.
-  Canonical public image: `ghcr.io/br0kensilos/ridgenote`, primary V1
-  tag `v1.0.0` -- see "Release status" above.
+  Canonical public image: `ghcr.io/br0kensilos/ridgenote`, current V1
+  tag `v1.0.1` -- see "Release status" above.
 
 See [`deploy/README.md`](../deploy/README.md) for the linear Quick
 Deploy procedure and [`docs/RUNBOOK_DEPLOYMENT.md`](RUNBOOK_DEPLOYMENT.md)
