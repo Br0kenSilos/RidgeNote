@@ -25,16 +25,29 @@ A GitHub Release for v1.0.1 is published at
 [`github.com/Br0kenSilos/RidgeNote/releases/tag/v1.0.1`](https://github.com/Br0kenSilos/RidgeNote/releases/tag/v1.0.1)
 and is marked as the repository's current/latest release. It carries
 five assets -- `docker-compose.yml`, `env.example`, `README.md`,
-`ridgenote-v1.0.1-deploy.zip`, and `SHA256SUMS` -- each verified by
-downloading it back and confirming checksum and byte-for-byte identity
-against the published source.
+`ridgenote-v1.0.1-deploy.zip`, and `SHA256SUMS` -- reflecting Quick
+Deploy as finalized after two successful Docker2 rehearsal
+deployments; the assets were refreshed from that finalized package and
+verified by downloading them back and confirming checksum and
+byte-for-byte identity against the published source.
 
-At this point in the release process, the source repository itself
-**remains private**, and release immutability has **not** yet been
-enabled -- both are deliberate, still-pending steps. A final public/
-anonymous deployment acceptance pass, using the actual published
-release artifacts rather than working-tree copies, is still pending
-and will occur after repository visibility changes.
+**The source repository is now public.** Anonymous, unauthenticated
+access has been verified end to end: the repository and this release
+itself, the `/releases/latest/download/docker-compose.yml`,
+`/releases/latest/download/env.example`, and
+`/releases/latest/download/README.md` asset URLs, and anonymous GHCR
+pull access for the `v1.0.1`, `sha-257eee0`, and `latest` tags (all
+three still resolving to digest
+`sha256:f115caff1b9e41ea000881ff2cc26cad1925878ab47595a6fd1b78a99da7c517`).
+A final fresh install using only the public Quick Deploy path --
+downloading the release assets anonymously rather than using
+working-tree copies -- completed successfully end to end. **Public V1
+publication and deployment acceptance is complete.**
+
+**Release immutability has deliberately not been enabled yet.** The
+owner plans to revisit enabling it only after an upcoming production
+installation, so this remains an intentional, still-open step -- not
+an oversight.
 
 ## What RidgeNote V1 is
 
