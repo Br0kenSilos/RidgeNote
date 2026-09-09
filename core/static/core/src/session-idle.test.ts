@@ -220,6 +220,27 @@ describe("initSessionIdleDocument", () => {
     expect(scheduler.countDelay(120000)).toBe(0);
   });
 
+  it("does nothing and returns false when the idle timeout is disabled (0)", () => {
+    // RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=0 ("never expire") reaches
+    // the client exactly like this -- idleTimeoutSeconds=0 in the
+    // rendered config. No warning is ever shown and no expiry/reconcile
+    // schedule is ever created, the same as the config-absent case
+    // above.
+    const { doc, warningBanner } = buildDocument({
+      idleTimeoutSeconds: 0,
+      warningSeconds: 300,
+    });
+    const scheduler = new ManualScheduler();
+
+    const result = initSessionIdleDocument(doc as unknown as Document, {
+      scheduler,
+    });
+
+    expect(result).toBe(false);
+    expect(scheduler.delays()).toHaveLength(0);
+    expect(warningBanner.hidden).toBe(true);
+  });
+
   it("schedules the first reconciliation at the full idle timeout", () => {
     const { doc } = buildDocument({
       idleTimeoutSeconds: 120,

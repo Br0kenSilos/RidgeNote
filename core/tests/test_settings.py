@@ -305,6 +305,52 @@ def test_session_warning_not_below_idle_timeout_still_raises_at_import():
     )
 
 
+# -- Session idle timeout=0: explicit "never expire" sentinel ----------------
+
+
+def test_session_idle_timeout_zero_is_accepted():
+    result = _settings_attr(
+        {"RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS": "0"},
+        "RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS",
+    )
+    assert result == 0
+
+
+def test_session_idle_timeout_zero_skips_the_warning_comparison():
+    # Any positive warning value -- including the default 300, which
+    # would otherwise be >= a tiny idle timeout -- must not raise when
+    # the idle timeout is the disabled sentinel.
+    result = _settings_attr(
+        {
+            "RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS": "0",
+            "RIDGENOTE_SESSION_WARNING_SECONDS": "999999",
+        },
+        "RIDGENOTE_SESSION_WARNING_SECONDS",
+    )
+    assert result == 999999
+
+
+def test_session_idle_timeout_negative_still_rejected():
+    completed = _settings_import_fails({"RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS": "-1"})
+    assert completed.returncode != 0
+    assert "RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS must be zero or greater." in completed.stderr
+
+
+def test_session_idle_timeout_positive_behavior_unchanged():
+    # Same-as-warning is still rejected for any positive idle timeout --
+    # only the 0 sentinel skips the comparison.
+    completed = _settings_import_fails(
+        {
+            "RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS": "60",
+            "RIDGENOTE_SESSION_WARNING_SECONDS": "60",
+        }
+    )
+    assert completed.returncode != 0
+    assert "RIDGENOTE_SESSION_WARNING_SECONDS must be less than the idle timeout." in (
+        completed.stderr
+    )
+
+
 # -- Optional SMTP invitation delivery ---------------------------------------
 
 

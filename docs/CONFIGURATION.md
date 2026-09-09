@@ -36,7 +36,7 @@ standalone deployment (`deploy/`) uses.
 | `RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD` | No | `5` | Number of failed login attempts, within the window below, before an account is temporarily locked. |
 | `RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS` | No | `900` | The rolling time window failed attempts are counted within. |
 | `RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS` | No | `900` | How long an account stays locked once the threshold is reached. |
-| `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS` | No | `3600` | How long an authenticated session may sit idle before it expires. |
+| `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS` | No | `3600` | How long an authenticated session may sit idle before it expires. `0` disables idle expiration entirely ("never"). Global -- applies to all users. |
 | `RIDGENOTE_SESSION_WARNING_SECONDS` | No | `300` | How long before idle expiry the in-app warning appears. Must be strictly less than the idle timeout above -- RidgeNote fails to start otherwise. |
 | `RIDGENOTE_INVITATION_EXPIRY_MINUTES` | No | `120` | How long an administrator-issued invitation link stays valid before it must be reissued. |
 | `RIDGENOTE_PURGE_ENABLED` | No | `true` | Whether the `scheduler` service automatically purges Trash items whose retention window has ended. |
@@ -124,11 +124,35 @@ ordinary household/small-team use.
 controls how long an authenticated session may sit idle before it
 expires; only genuine, server-recognized activity (page navigation,
 autosave from real typing, form submissions, and similar) extends it
--- background polling does not. `RIDGENOTE_SESSION_WARNING_SECONDS`
-(default `300`, five minutes) controls how long before that deadline
-the in-app idle warning appears. **`RIDGENOTE_SESSION_WARNING_SECONDS`
-must be strictly less than `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS`**
--- RidgeNote raises an error and refuses to start otherwise.
+-- background polling does not. This is a **global server setting** --
+it applies to every RidgeNote user identically; per-user idle timeout
+preferences are not supported in this version.
+
+`RIDGENOTE_SESSION_WARNING_SECONDS` (default `300`, five minutes)
+controls how long before that deadline the in-app idle warning
+appears. **`RIDGENOTE_SESSION_WARNING_SECONDS` must be strictly less
+than `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS`** -- RidgeNote raises an
+error and refuses to start otherwise.
+
+**`RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=0` disables idle-session
+expiration entirely ("Never").** When set to `0`,
+`RIDGENOTE_SESSION_WARNING_SECONDS` is ignored (its own validation
+against the idle timeout is skipped too), no idle warning ever
+appears, and sessions are never expired for inactivity -- only an
+explicit logout, a password change, or an administrator-driven
+account action ends the session.
+
+Common example values (these are common examples, not limits -- any
+supported positive value, or `0` for never, may be used):
+
+| Duration | Value |
+| --- | --- |
+| 1 hour | `3600` |
+| 12 hours | `43200` |
+| 1 day | `86400` |
+| 7 days | `604800` |
+| 30 days | `2592000` |
+| Never | `0` |
 
 ## Trash purge
 

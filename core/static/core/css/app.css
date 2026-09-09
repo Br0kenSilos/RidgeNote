@@ -8969,10 +8969,22 @@ a.note-list__title:focus-visible {
   color: var(--color-text-body);
   outline: none;
   white-space: pre-wrap;
+  /* Compact working-notepad density -- smaller and tighter than the
+     document-like `p`/`--line-height-body` defaults these blocks would
+     otherwise inherit. */
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Overrides the global `p { margin: 0 0 var(--space-14); }` rule inside
+   the editor -- that margin, stacked with the block-gap rule below, was
+   the main source of the oversized gap on Enter. */
+.note-editor .ProseMirror p {
+  margin: 0;
 }
 
 .note-editor .ProseMirror > * + * {
-  margin-top: var(--space-13);
+  margin-top: 0.25rem;
 }
 
 .note-editor .ProseMirror ul,

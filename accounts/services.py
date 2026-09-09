@@ -948,11 +948,19 @@ def mark_session_activity(request: HttpRequest) -> None:
 def session_expires_at(request: HttpRequest) -> float | None:
     """The authoritative idle-expiry deadline for this session, as a Unix
     timestamp -- `None` when no activity has been recorded yet (a fresh
-    session with nothing to expire). This is the single computation
+    session with nothing to expire) or when
+    `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS` is 0, the explicit "never
+    expire" sentinel. This is the single computation
     `session_is_expired()` below and `accounts.views.session_status`
     both build on, so there is exactly one place that derives "when does
     this session go idle" from `LAST_ACTIVITY_KEY` and
-    `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS`."""
+    `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS`. The 0 check must come
+    before touching `LAST_ACTIVITY_KEY` at all -- otherwise a recorded
+    activity timestamp plus a zero timeout would manufacture a deadline
+    of "right now", which `session_is_expired()` would treat as already
+    passed within moments."""
+    if settings.RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS <= 0:
+        return None
     last_activity = request.session.get(LAST_ACTIVITY_KEY)
     if last_activity is None:
         return None

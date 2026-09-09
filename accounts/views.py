@@ -233,8 +233,12 @@ def session_status(request: HttpRequest) -> JsonResponse:
             # the same computation SessionSecurityMiddleware itself uses) --
             # lets the frontend resynchronize to the server's true remaining
             # time instead of restarting a full idle-timeout cycle whenever
-            # it finds the session still valid. `None` only when no activity
-            # has been recorded yet for this session.
+            # it finds the session still valid. `None` when no activity has
+            # been recorded yet for this session, or when
+            # RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS is 0 ("never expire" --
+            # see `idle_timeout_seconds` above, which is 0 in that case too;
+            # the frontend already no-ops entirely on either signal, so no
+            # separate "disabled" field is needed).
             "expires_at": _expires_at_isoformat(services.session_expires_at(request)),
         }
     )

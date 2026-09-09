@@ -3,13 +3,21 @@
 ## Release status
 
 RidgeNote v1.0.0 was the first public release, tagged `v1.0.0` and
-built from commit `12d948e`. **RidgeNote v1.0.1 is now the current V1
-patch release**, tagged `v1.0.1` and built from commit `257eee0`. It
-fixes an authoritative session-idle/session-expiry defect found during
-real deployment rehearsal (v1.0.0 did not include this fix) and
-includes the finalized standalone deployment package (`deploy/`
-Compose bundle, Quick Deploy procedure, and
-[`docs/CONFIGURATION.md`](CONFIGURATION.md)).
+built from commit `12d948e`. RidgeNote v1.0.1, tagged `v1.0.1` and
+built from commit `257eee0`, fixed an authoritative
+session-idle/session-expiry defect found during real deployment
+rehearsal (v1.0.0 did not include this fix) and included the finalized
+standalone deployment package (`deploy/` Compose bundle, Quick Deploy
+procedure, and [`docs/CONFIGURATION.md`](CONFIGURATION.md)).
+
+**RidgeNote v1.0.2 is the next upcoming V1 patch release**, currently
+being finalized from this repository state. It tightens editor
+typography/paragraph spacing toward a more compact, working-notepad
+feel, and adds an explicit `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=0`
+("never expire") sentinel with corresponding configuration-reference
+updates. It requires no migration or manual database action and
+introduces no breaking deployment changes. It is not yet published as
+of this text.
 
 The canonical public source repository is
 [`https://github.com/Br0kenSilos/RidgeNote`](https://github.com/Br0kenSilos/RidgeNote).
@@ -172,6 +180,11 @@ maintenance** (see
   delete, editable account identity fields (display name, username,
   email self-service), Tag merge/bulk recolor, and self-service
   password reset are not part of V1.
+- Per-user session idle timeout preferences are deferred future work --
+  `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS` (including its `0`/"never"
+  setting) remains a single global server setting applying to all
+  users; it is not implemented as a per-user preference in this
+  version.
 
 ## Acceptance evidence
 

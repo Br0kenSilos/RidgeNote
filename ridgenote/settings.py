@@ -35,6 +35,24 @@ def env_positive_int(name: str, default: int) -> int:
     return value
 
 
+def env_nonnegative_int(name: str, default: int) -> int:
+    """Like `env_positive_int`, but 0 is accepted as a meaningful value
+    rather than rejected -- used only for
+    `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS`, where 0 is the explicit
+    "never expire" sentinel (see the validation just below this
+    function). Negative values are still rejected."""
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer.") from exc
+    if value < 0:
+        raise ValueError(f"{name} must be zero or greater.")
+    return value
+
+
 def env_optional_positive_int(name: str) -> int | None:
     """Like `env_positive_int`, but a blank/absent value means "not
     configured" rather than falling back to a numeric default -- used for
@@ -226,12 +244,18 @@ RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS = env_positive_int(
     "RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS",
     15 * 60,
 )
-RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS = env_positive_int(
+RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS = env_nonnegative_int(
     "RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS",
     60 * 60,
 )
 RIDGENOTE_SESSION_WARNING_SECONDS = env_positive_int("RIDGENOTE_SESSION_WARNING_SECONDS", 5 * 60)
-if RIDGENOTE_SESSION_WARNING_SECONDS >= RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS:
+# 0 is the explicit "never expire" sentinel -- RIDGENOTE_SESSION_WARNING_SECONDS
+# is meaningless (and never enforced) in that case, so this comparison is
+# skipped entirely rather than rejecting every positive warning value.
+if (
+    RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS > 0
+    and RIDGENOTE_SESSION_WARNING_SECONDS >= RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS
+):
     raise ValueError("RIDGENOTE_SESSION_WARNING_SECONDS must be less than the idle timeout.")
 
 RIDGENOTE_INVITATION_EXPIRY_MINUTES = env_positive_int("RIDGENOTE_INVITATION_EXPIRY_MINUTES", 120)

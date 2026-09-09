@@ -4,7 +4,7 @@ services:
   web:
     container_name: ridgenote-web
     # Use :latest instead if you prefer tracking the newest published RidgeNote image.
-    image: ghcr.io/br0kensilos/ridgenote:v1.0.1
+    image: ghcr.io/br0kensilos/ridgenote:v1.0.2
     environment:
       RIDGENOTE_SECRET_KEY: ${RIDGENOTE_SECRET_KEY}
       RIDGENOTE_ALLOWED_HOSTS: ${RIDGENOTE_ALLOWED_HOSTS}
@@ -65,7 +65,7 @@ services:
   scheduler:
     container_name: ridgenote-scheduler
     # Use :latest instead if you prefer tracking the newest published RidgeNote image.
-    image: ghcr.io/br0kensilos/ridgenote:v1.0.1
+    image: ghcr.io/br0kensilos/ridgenote:v1.0.2
     environment:
       RIDGENOTE_SECRET_KEY: ${RIDGENOTE_SECRET_KEY}
       RIDGENOTE_DEBUG: ${RIDGENOTE_DEBUG:-0}

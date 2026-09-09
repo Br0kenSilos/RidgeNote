@@ -15,7 +15,7 @@ from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import close_old_connections, connections
-from django.test import Client, override_settings
+from django.test import Client, RequestFactory, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -1153,6 +1153,65 @@ def test_expired_session_logs_out_before_view():
     assert response.url == reverse("accounts:login")
 
 
+# -- Session idle timeout=0: "never expire" sentinel -------------------------
+
+
+@pytest.mark.django_db
+@override_settings(RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=0)
+def test_disabled_idle_timeout_never_logs_out_even_with_very_old_activity():
+    # Mirrors test_expired_session_logs_out_before_view above, but with
+    # the idle timeout disabled -- an activity timestamp far older than
+    # any real positive timeout would tolerate must still not expire
+    # the session.
+    user = create_account("never-expire-user")
+    client = authenticated_client(user)
+    session = client.session
+    session[services.LAST_ACTIVITY_KEY] = (timezone.now() - timedelta(days=365)).timestamp()
+    session.save()
+
+    response = client.get(reverse("home"))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@override_settings(RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=0, RIDGENOTE_SESSION_WARNING_SECONDS=300)
+def test_session_status_reports_disabled_idle_timeout():
+    # RIDGENOTE_SESSION_WARNING_SECONDS is set here specifically to
+    # confirm it has no bearing on the response when the idle timeout
+    # is disabled -- it is echoed back unchanged, but expires_at stays
+    # None regardless of recorded activity.
+    user = create_account("disabled-status-user")
+    client = authenticated_client(user)
+    session = client.session
+    session[services.LAST_ACTIVITY_KEY] = (timezone.now() - timedelta(days=1)).timestamp()
+    session.save()
+
+    response = client.get(reverse("accounts:session_status"))
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["authenticated"] is True
+    assert payload["idle_timeout_seconds"] == 0
+    assert payload["expires_at"] is None
+
+
+@pytest.mark.django_db
+@override_settings(RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=0)
+def test_session_expires_at_service_returns_none_when_disabled():
+    user = create_account("disabled-service-user")
+    client = authenticated_client(user)
+    session = client.session
+    session[services.LAST_ACTIVITY_KEY] = timezone.now().timestamp()
+    session.save()
+
+    request = RequestFactory().get("/")
+    request.session = client.session
+
+    assert services.session_expires_at(request) is None
+    assert services.session_is_expired(request) is False
+
+
 @pytest.mark.django_db
 def test_cli_recovery_finds_admin_case_insensitively():
     admin = create_admin("RecoverAdmin", display_name="Recover Admin")
@@ -1287,7 +1346,11 @@ def test_audit_details_drop_sensitive_fields():
         ("RIDGENOTE_LOGIN_LOCKOUT_THRESHOLD", "0"),
         ("RIDGENOTE_LOGIN_LOCKOUT_WINDOW_SECONDS", "not-an-int"),
         ("RIDGENOTE_LOGIN_LOCKOUT_DURATION_SECONDS", "-1"),
-        ("RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS", "0"),
+        # 0 is the explicit "never expire" sentinel for this one
+        # variable now (see test_settings.py's
+        # test_session_idle_timeout_zero_is_accepted) -- negative is
+        # still the invalid case here.
+        ("RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS", "-1"),
         ("RIDGENOTE_SESSION_WARNING_SECONDS", "0"),
     ],
 )

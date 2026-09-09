@@ -98,12 +98,11 @@ def test_ridgenote_services_use_the_pinned_v1_image_directly_not_build():
     # official image directly for both web and scheduler -- no
     # ${RIDGENOTE_IMAGE} indirection, and no compose-level image
     # override variable in the normal deployment contract. Pinned to
-    # v1.0.1 (the current recommended deployment version -- v1.0.0 was
-    # published without the accepted session-idle fix; see release
-    # history for that historical detail).
+    # v1.0.2 (the current recommended deployment version -- see release
+    # history for prior versions' own historical detail).
     compose = _read("docker-compose.yml")
     assert "${RIDGENOTE_IMAGE}" not in compose
-    assert compose.count("image: ghcr.io/br0kensilos/ridgenote:v1.0.1") == 2
+    assert compose.count("image: ghcr.io/br0kensilos/ridgenote:v1.0.2") == 2
     assert "build:" not in compose
 
 

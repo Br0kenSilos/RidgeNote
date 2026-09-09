@@ -117,6 +117,13 @@ const COUNTDOWN_TICK_MS = 1000;
  * `request.user.is_authenticated`) or malformed/missing configuration
  * -- exactly mirroring the early-return shape every other
  * `init*Document` function in this codebase uses.
+ *
+ * `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=0` ("never expire" -- see
+ * `ridgenote.settings`/`accounts.services.session_expires_at`) reaches
+ * here as `idleTimeoutSeconds <= 0` below, which already returns
+ * `false`: no warning banner, no expiry redirect, nothing scheduled.
+ * This is the same early-return malformed/missing configuration would
+ * take -- disabled is simply never treated as configured.
  */
 export function initSessionIdleDocument(
   doc: Document = document,
@@ -135,7 +142,7 @@ export function initSessionIdleDocument(
     !config.dataset.sessionExpiredUrl ||
     !config.dataset.sessionCsrfToken ||
     !Number.isFinite(idleTimeoutSeconds) ||
-    idleTimeoutSeconds <= 0 ||
+    idleTimeoutSeconds <= 0 || // includes the disabled ("never expire") case
     !Number.isFinite(warningSeconds) ||
     warningSeconds < 0 ||
     warningSeconds >= idleTimeoutSeconds
