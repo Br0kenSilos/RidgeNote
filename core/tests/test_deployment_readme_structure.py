@@ -1,18 +1,17 @@
-"""Contract checks for deploy/README.md's manual-first structure, and
-for the deeper operator/deployment material it deliberately delegates
-to docs/RUNBOOK_DEPLOYMENT.md.
+"""Contract checks for deploy/README.md's linear Quick Deploy structure,
+and for the deeper operator/deployment material it deliberately
+delegates to docs/RUNBOOK_DEPLOYMENT.md.
 
 These assert concepts (ordering, presence of required concepts, absence
 of unsafe patterns, and -- for guarantees split across both documents --
 which document actually carries which part), not exact prose or heading
 numbering -- the wording is free to evolve without breaking these tests,
-as long as the underlying contract holds: the manual Compose/env/README
-path is documented as the first-class, self-sufficient installation
-procedure in Quick Deploy; the bootstrap helper is presented afterward
-as an explicitly optional convenience; and the deep service-model/
-migration/scheduler/PostgreSQL explanations Quick Deploy no longer
-carries inline remain fully present and grounded in the comprehensive
-runbook.
+as long as the underlying contract holds: Quick Deploy is a short,
+linear, self-sufficient manual procedure built entirely around the
+three shipped deployment files, with no separate helper-script section;
+and the deep service-model/migration/scheduler/PostgreSQL explanations
+Quick Deploy does not carry inline remain fully present and grounded in
+the comprehensive runbook.
 """
 
 import re
@@ -71,24 +70,26 @@ def _code_blocks(text: str) -> list[str]:
     return re.findall(r"```(?:sh|dotenv)?\n(.*?)```", text, re.DOTALL)
 
 
-def test_manual_installation_appears_before_helper_section():
-    # The manual, step-by-step Quick Deploy path is a single ordered
-    # list (no per-step H2 headings) -- match its first step directly
-    # rather than requiring a heading level that no longer exists here.
-    manual_start = _heading_index(r"1\.\s+\*\*Create the deployment directory\*\*")
-    helper_start = _heading_index(r"^### Optional: automate steps")
-    assert manual_start < helper_start
+def test_manual_installation_is_the_complete_quick_deploy_procedure():
+    # Quick Deploy is a single linear numbered sequence, self-sufficient
+    # on its own -- there is no separate helper-script section to order
+    # against (setup-deploy-host.sh, if it exists elsewhere in the
+    # repository, is no longer part of this procedure at all -- see
+    # test_quick_deploy_has_no_stale_helper_script_references below).
+    manual_start = _heading_index(r"1\.\s+\*\*Create and enter the deployment directory\*\*")
+    admin_start = _heading_index(r"10\.\s+\*\*Create the first administrator")
+    assert manual_start < admin_start
 
 
-def test_helper_section_is_labeled_optional():
-    helper_start = _heading_index(r"^### Optional: automate steps")
-    nearby = README[helper_start : helper_start + 300]
-    assert "Optional" in nearby
-    assert "Review the script before running it" in nearby
-
-
-def test_helper_is_never_described_as_required():
-    assert "never a requirement" in README.lower() or "entirely optional" in README.lower()
+def test_quick_deploy_has_no_stale_helper_script_references():
+    # LOCKED current-contract decision: the optional setup-deploy-host.sh
+    # bootstrap workflow no longer appears anywhere in this document --
+    # the manual three-file procedure is presented as complete and
+    # self-sufficient on its own. The script itself may still exist
+    # elsewhere in the repository (scripts/setup-deploy-host.sh); this
+    # only asserts Quick Deploy no longer references it.
+    assert "setup-deploy-host.sh" not in README
+    assert "Optional: automate steps" not in README
 
 
 def test_minimal_three_file_bundle_is_documented_as_sufficient():
@@ -102,18 +103,14 @@ def test_minimal_three_file_bundle_is_documented_as_sufficient():
     assert "exactly these three files, and nothing else" in section
 
 
-def test_optional_helper_bundle_is_documented():
-    section = _section(README, r"^## Before you begin", r"^## Quick Deploy")
-    assert "setup-deploy-host.sh" in section
-    assert "optional fourth file" in section
-    assert "convenience, never a requirement" in section
-
-
 def test_manual_path_covers_required_steps():
     required_concepts = [
+        r"curl -fLO https://github\.com/Br0kenSilos/RidgeNote/releases/latest/download/docker-compose\.yml",  # latest-release download
+        r"curl -fLO https://github\.com/Br0kenSilos/RidgeNote/releases/latest/download/env\.example",
+        r"curl -fLO https://github\.com/Br0kenSilos/RidgeNote/releases/latest/download/README\.md",
         r"cp env\.example \.env",  # .env creation
         r"openssl rand",  # secret generation
-        r"mkdir -p data/postgres backups/postgres",  # persistent directories
+        r"mkdir -p data/postgres",  # persistent directory (current contract: data/postgres only)
         r"sudo chown 999:999",  # approved V1 PostgreSQL ownership contract
         r"ls -ldn data/postgres",  # explicit numeric-ownership verification
         r"sudo chmod 700 data/postgres",  # ownership/permissions
@@ -122,15 +119,23 @@ def test_manual_path_covers_required_steps():
         r"docker compose up -d\n",  # single-command startup (automatic migrations)
         r"docker compose logs -f",  # watch startup/migration logs
         r"/health/",  # health check
-        r"/setup/",  # administrator bootstrap
+        r"automatically redirect you to the first-run administrator setup",  # administrator bootstrap
     ]
     for pattern in required_concepts:
         assert re.search(pattern, README), f"missing required manual-path step: {pattern}"
 
 
+def test_manual_path_does_not_reference_backups_postgres_directory():
+    # LOCKED current-contract decision: Quick Deploy's persistent-storage
+    # step creates and owns only `data/postgres` -- the larger backup
+    # procedure (and its `backups/postgres` directory) was intentionally
+    # moved out of Quick Deploy into docs/RUNBOOK_BACKUP_RESTORE.md.
+    assert "backups/postgres" not in README
+
+
 def test_manual_path_does_not_require_a_separate_manual_migration_step():
-    install_start = _heading_index(r"1\.\s+\*\*Create the deployment directory\*\*")
-    install_end = _heading_index(r"9\.\s+\*\*Create the first administrator")
+    install_start = _heading_index(r"1\.\s+\*\*Create and enter the deployment directory\*\*")
+    install_end = _heading_index(r"10\.\s+\*\*Create the first administrator")
     install_section = README[install_start:install_end]
     # The leading numbered install procedure must not instruct the
     # operator to run a migration command themselves -- automatic
@@ -140,7 +145,7 @@ def test_manual_path_does_not_require_a_separate_manual_migration_step():
     assert "manage.py migrate" not in install_section
     assert "docker compose up -d postgres" not in install_section
     assert "docker compose up -d web scheduler" not in install_section
-    assert "applies any pending database migrations automatically" in install_section
+    assert re.search(r"applies any pending\s+database migrations automatically", install_section)
     assert re.search(r"no separate manual migration\s+step", install_section)
 
 
@@ -213,7 +218,9 @@ def test_env_example_lines_are_well_formed():
 
 
 def test_image_tag_guidance_is_neutral():
-    tags_start = _heading_index(r"^## Image tags")
+    # Heading level is incidental formatting (currently H3 under a
+    # "## NOTES" wrapper) -- not part of the contract.
+    tags_start = _heading_index(r"^#{2,3}\s*Image tags")
     section = README[tags_start : tags_start + 600].lower()
     assert "latest" in section
     # Must not tell the installer a moving tag is unsafe/inappropriate.

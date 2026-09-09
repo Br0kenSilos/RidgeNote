@@ -1,7 +1,6 @@
 services:
-  # RidgeNote web application. Applies any pending database migrations
-  # automatically at startup before serving -- see README, "Automatic
-  # startup migrations".
+  # RidgeNote web application. Applies pending database migrations
+  # automatically before serving.
   web:
     container_name: ridgenote-web
     # Use :latest instead if you prefer tracking the newest published RidgeNote image.
@@ -31,10 +30,7 @@ services:
       RIDGENOTE_SESSION_WARNING_SECONDS: ${RIDGENOTE_SESSION_WARNING_SECONDS:-300}
 
       RIDGENOTE_INVITATION_EXPIRY_MINUTES: ${RIDGENOTE_INVITATION_EXPIRY_MINUTES:-120}
-      # Optional SMTP invitation delivery -- `web`
-      # only, since `scheduler` has no email-sending behavior of its own.
-      # All blank by default; RidgeNote works exactly as it does today
-      # with none of these set.
+      # Optional SMTP settings for invitation email delivery; web only.
       RIDGENOTE_SMTP_HOST: ${RIDGENOTE_SMTP_HOST:-}
       RIDGENOTE_SMTP_PORT: ${RIDGENOTE_SMTP_PORT:-}
       RIDGENOTE_SMTP_TLS_MODE: ${RIDGENOTE_SMTP_TLS_MODE:-}
@@ -54,11 +50,7 @@ services:
       retries: 3
       start_period: 20s
     restart: unless-stopped
-    # Bounded log retention. Unbounded json-file
-    # logs were the actual defect (not log content) -- ~50 MB max per
-    # container, oldest rotated files discarded automatically. See
-    # README, "Logs", and docs/RUNBOOK_DEPLOYMENT.md for adjustment
-    # guidance.
+    # Bound container log growth with automatic rotation.
     logging:
       driver: json-file
       options:
@@ -104,9 +96,7 @@ services:
     container_name: ridgenote-postgres
     image: postgres:17-bookworm
     environment:
-      # Sourced from the single user-facing RIDGENOTE_DATABASE_NAME/USER/
-      # PASSWORD -- POSTGRES_DB/USER/PASSWORD themselves are internal
-      # Compose/image keys, not separate values the installer sets.
+      # Reuse RidgeNote's database settings for PostgreSQL initialization.
       POSTGRES_DB: ${RIDGENOTE_DATABASE_NAME:-ridgenote}
       POSTGRES_USER: ${RIDGENOTE_DATABASE_USER:-ridgenote}
       POSTGRES_PASSWORD: ${RIDGENOTE_DATABASE_PASSWORD}

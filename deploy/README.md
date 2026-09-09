@@ -9,7 +9,7 @@ the full environment-variable reference, see `docs/CONFIGURATION.md`.
 
 ## Before you begin
 
-- A host running Docker Engine and a current Docker Compose (the
+- An amd64 based host running Docker Engine and a current Docker Compose (the
   `docker compose` plugin, not the legacy standalone `docker-compose`).
   This bundle was validated against Docker `29.6.1` / Compose `v5.3.1`
   on Ubuntu 24.04 LTS; any reasonably current Docker installation is
@@ -22,9 +22,10 @@ the full environment-variable reference, see `docs/CONFIGURATION.md`.
   public-exposure hardening -- both are out of scope here. Either way,
   never publish the PostgreSQL service port itself to an untrusted
   network or the public Internet -- the shipped Compose file does not
-  do this by default; keep it that way.
+  do this by default; I recommend you keep it that way.
 - Approximately 2 GiB RAM available is sufficient for RidgeNote plus
-  PostgreSQL at this scale.
+  PostgreSQL at this scale. It may run fine on less but has not been
+  tested that way.
 - You need exactly these three files, and nothing else:
   - `docker-compose.yml`
   - `env.example`
@@ -32,122 +33,119 @@ the full environment-variable reference, see `docs/CONFIGURATION.md`.
 
   No RidgeNote source checkout, no Git, and no local image build are
   needed at any point -- the application image is pulled from GHCR
-  (GitHub Container Registry), publicly and anonymously. An
-  optional fourth file, `setup-deploy-host.sh`, can automate part of
-  the sequence below -- see "Optional: automate steps 4-5" after the
-  sequence. It is a convenience, never a requirement.
+  (GitHub Container Registry), publicly and anonymously.
 
 ## Quick Deploy
 
-1. **Create the deployment directory** and obtain the three files
-   above into it. `docker-compose.yml`, `env.example`, and this
-   `README.md` are distributed together as the RidgeNote deployment
-   bundle -- download or copy all three from wherever you obtained
-   RidgeNote (for example, the assets attached to a RidgeNote release
-   on the project's GitHub page) into a single directory:
+1. **Create and enter the deployment directory**
 
    ```sh
-   mkdir -p /opt/ridgenote
-   cd /opt/ridgenote
+   mkdir -p ~/ridgenote
+   cd ~/ridgenote
    ```
 
    The path above is only an example -- use whatever directory makes
    sense on your host. Every command below assumes you are running it
    from this directory unless stated otherwise.
 
-2. **Prepare `.env`:**
+2. **Download the RidgeNote deployment files:**
+
+   ```sh
+   curl -fLO https://github.com/Br0kenSilos/RidgeNote/releases/latest/download/docker-compose.yml
+   curl -fLO https://github.com/Br0kenSilos/RidgeNote/releases/latest/download/env.example
+   curl -fLO https://github.com/Br0kenSilos/RidgeNote/releases/latest/download/README.md
+   ```
+
+3. **Prepare `.env`:**
 
    ```sh
    cp env.example .env
    ```
 
-   `env.example` is organized into exactly two sections -- REQUIRED
-   (no safe default; you must set each one) and OPTIONAL (already has
-   a working default) -- so you can see at a glance what actually
-   needs your attention.
 
-   Generate the two required secrets:
+   Generate the two required secrets. Copy each value somewhere temporarily so you can paste it into .env:
+
 
    ```sh
    openssl rand -hex 48
    ```
 
-   Paste that value into `.env` as `RIDGENOTE_SECRET_KEY`.
 
    ```sh
    openssl rand -hex 32
    ```
 
-   Paste that value into `.env` as `RIDGENOTE_DATABASE_PASSWORD` --
-   this one value is used for both RidgeNote's own database connection
+   `env.example` is organized into exactly two sections; REQUIRED
+   (no safe default included; you must set each one) and OPTIONAL (already has
+   a working default). So you can see at a glance what actually
+   needs your attention.
+
+
+   Edit the .env file with your preferred text editor, for example: nano, vim, vi.
+   ```sh
+   nano .env
+   ```
+
+   and set the remaining required values:
+
+   Paste the first value into the  `.env` file as the `RIDGENOTE_SECRET_KEY` value.
+
+   Paste the second value into the  `.env` file as the `RIDGENOTE_DATABASE_PASSWORD`
+   value. This one value is used for both RidgeNote's own database connection
    and PostgreSQL's own initialization; `docker-compose.yml` wires them
    together, so there is nothing else to set or match by hand.
 
-   Then edit `.env` and set the remaining required value:
-
+   Set `RIDGENOTE_ALLOWED_HOSTS`:
    ```dotenv
    RIDGENOTE_ALLOWED_HOSTS=192.0.2.10,127.0.0.1
    ```
 
    **You must replace `192.0.2.10` with the actual host name(s) or
    IP address(es) you will use to reach this RidgeNote server** -- the
-   shipped example value is a documentation-only placeholder and will
+   example value is a documentation-only placeholder and will
    not match your real deployment. Leaving it unreplaced is the most
    common first-run mistake: RidgeNote will reject the request with
    HTTP 400 the moment you try to open it in a browser. **Keep
-   `127.0.0.1` in the list** -- the packaged Docker health check always
+   `127.0.0.1` in the list** as the packaged Docker health check always
    requests `http://127.0.0.1:8000/health/` from inside the container,
    and removing `127.0.0.1` makes the web container report unhealthy
    even though RidgeNote itself is running fine. Do not use a wildcard
    host.
 
-   Two related settings are OPTIONAL and can be left blank for this
-   plain-HTTP, direct-LAN topology: `RIDGENOTE_CSRF_TRUSTED_ORIGINS`
-   (only matters behind a reverse proxy serving RidgeNote over HTTPS)
-   and `RIDGENOTE_EXTERNAL_URL` (only affects the link inside
-   automatically-sent invitation emails -- see "Email handling" in
-   `docs/CONFIGURATION.md`; ordinary browsing, login, and manual
-   invitation links never use it).
+   There are two related settings that are `OPTIONAL` and can be left
+   blank for this plain-HTTP, direct-LAN topology:
 
-   RidgeNote's published image is public and does not require registry
-   authentication; the step below applies only if you are using your
-   own private mirror, fork, or other private image. If the image
-   package is private, authenticate before pulling:
+   `RIDGENOTE_CSRF_TRUSTED_ORIGINS` - only matters when RidgeNote will
+   be behind a reverse proxy serving RidgeNote over HTTPS.
 
-   ```sh
-   docker login registry.example.com
-   ```
+   `RIDGENOTE_EXTERNAL_URL` - only affects the link inside automatically-sent
+   invitation emails.
 
-   Use a registry access token with package-read scope as the
-   password, not your account password. `docker logout
-   registry.example.com` afterward if this is a shared or temporary
-   session. If anonymous pull already works on your network, this
-   step is unnecessary.
+   See "Email handling" in `docs/CONFIGURATION.md`;
+   ordinary browsing, login, and manual invitation links never use it.
 
-   Leave the remaining shipped defaults (`RIDGENOTE_DEBUG=0`,
+
+   Leave the remaining defaults (`RIDGENOTE_DEBUG=0`,
    `RIDGENOTE_PURGE_ENABLED=true`,
    `RIDGENOTE_TRUST_X_FORWARDED_PROTO=false`) unchanged unless you have
-   a specific, understood reason to change them -- the latter only
+   a specific, understood reason to change them. The latter only
    needs attention behind a reverse proxy; see
-   `docs/RUNBOOK_DEPLOYMENT.md`.
+   `docs/RUNBOOK_DEPLOYMENT.md` for more info.
 
-3. **Secure the file:**
+4. **Secure the .env file:**
 
    ```sh
    chmod 600 .env
    ```
 
-4. **Create and prepare PostgreSQL's persistent storage.** The
+5. **Create and prepare PostgreSQL's persistent storage.** The
    published PostgreSQL image runs as a fixed numeric user/group,
    `999:999` -- the bind-mounted data directory must be owned by that
    exact numeric user/group before the container starts, or PostgreSQL
    will fail to initialize:
 
    ```sh
-   mkdir -p data/postgres backups/postgres
-   chmod 755 data
-   chmod 700 backups backups/postgres
-
+   mkdir -p data/postgres
    sudo chown 999:999 data/postgres
    sudo chmod 700 data/postgres
    ls -ldn data/postgres
@@ -155,12 +153,12 @@ the full environment-variable reference, see `docs/CONFIGURATION.md`.
 
    The last command's output should show numeric owner and group
    `999 999`. `sudo` here changes the ownership and permissions of
-   exactly `data/postgres` -- nothing else on the host -- so the
-   PostgreSQL container can read and write its own data directory,
+   only the `data/postgres` folder and nothing else on the host
+   so the PostgreSQL container can read and write its own data directory,
    while no other user on the host can. Never use `chmod 777`, and
    never apply ownership changes recursively outside `data/postgres`.
 
-5. **Validate the Compose configuration:**
+6. **Validate the Compose configuration:**
 
    ```sh
    docker compose config --quiet
@@ -176,163 +174,81 @@ the full environment-variable reference, see `docs/CONFIGURATION.md`.
 
    Expected output: `postgres`, `web`, `scheduler`.
 
-6. **Pull images:**
+7. **Pull images:**
 
    ```sh
    docker compose pull
    ```
 
-7. **Start RidgeNote:**
+8. **Start RidgeNote:**
 
    ```sh
    docker compose up -d
+   ```
+
+   That's it! One command starts PostgreSQL, applies any pending
+   database migrations automatically, and starts RidgeNote's web and
+   scheduler services. There is no separate manual migration step for an
+   ordinary installation.
+
+   To watch startup:
+
+   ```sh
    docker compose logs -f
    ```
 
-   That's it -- one command starts PostgreSQL, waits for it internally,
-   applies any pending database migrations automatically, and then
-   starts `web` and `scheduler`. There is no separate manual migration
-   step for an ordinary install. Watch `docker compose logs -f` for
-   lines like `Startup migration check beginning`, `PostgreSQL
-   reachable`, `Applying database migrations`, `Migrations complete`,
-   and `Migration lock released` from `web` (and, redundantly and
-   harmlessly, from `scheduler` too) before Gunicorn's own startup
-   lines appear -- see `docs/RUNBOOK_DEPLOYMENT.md` for exactly how
-   this works and what to do if it fails. Press Ctrl+C to stop
-   following logs once things look healthy -- the containers keep
-   running.
+   Press Ctrl+C when startup is complete. The containers continue running.
+   See `docs/RUNBOOK_DEPLOYMENT.md` if startup fails or for detailed
+   startup and migration behavior.
 
-8. **Verify health:**
+9. **Verify health:**
 
    ```sh
    curl -fsS http://127.0.0.1:8000/health/
    ```
 
-   Expected response: `{"ok": true, "database": 1}`. Then open
-   `RIDGENOTE_EXTERNAL_URL` (your configured LAN URL) in a browser.
+   Expected response: `{"ok": true, "database": 1}`.
+   Then open `http://<HOST-IP-ADDRESS>:8000` in a browser.
 
-9. **Create the first administrator.** Visit
-   `<RIDGENOTE_EXTERNAL_URL>/setup/` in a browser and follow the
-   first-run setup flow to create the first administrator account,
-   then log in normally. This is RidgeNote's existing, unchanged
-   bootstrap mechanism -- there is no separate management command,
-   and visiting the base URL does not automatically redirect you to
-   `/setup/`.
+10. **Create the first administrator.**
 
-### Optional: automate steps 4-5
+    Visit:    `http://<HOST-IP-ADDRESS>:8000`
 
-> Review the script before running it. It does not install Docker,
-> pull or start RidgeNote, run migrations, or create an administrator.
+    On a fresh installation with no existing users, RidgeNote will automatically redirect you to the first-run administrator setup page.
 
-`setup-deploy-host.sh`, if you have a copy of it alongside this
-bundle, performs steps 4 and 5 for you:
+    Follow the setup flow to create the first administrator account, then log in normally.
 
-```sh
-./setup-deploy-host.sh \
-  --deploy-dir /opt/ridgenote \
-  --host 192.0.2.10 \
-  --external-url http://192.0.2.10:8000
-```
+---
 
-It creates `data/postgres` and `backups/postgres`, applies the
-`999:999` PostgreSQL ownership and restrictive modes, generates a
-fresh `.env` from `env.example` with locally generated secrets (never
-printed to the terminal), and validates the Compose configuration. It
-refuses to run as root, refuses to overwrite an existing `.env`, and
-never starts any service. Continue from step 6 afterward.
+## NOTES
 
-Re-run with `--validate-only` at any time to verify an already-prepared
-directory without making any change:
+### Image tags
+The shipped `docker-compose.yml` uses a fixed RidgeNote release tag
+for both `web` and `scheduler`. This makes the deployment reproducible:
+you always know exactly what version is running, and rolling back is a
+matter of restoring the previous image tag.
 
-```sh
-./setup-deploy-host.sh \
-  --deploy-dir /opt/ridgenote \
-  --host 192.0.2.10 \
-  --external-url http://192.0.2.10:8000 \
-  --validate-only
-```
-
-This helper is entirely optional -- the manual steps above are the
-complete, authoritative installation procedure on their own.
-
-## Image tags
-
-The shipped `docker-compose.yml` uses `ghcr.io/br0kensilos/ridgenote:v1.0.1`
-directly for both `web` and `scheduler` -- a fixed, reproducible
-version tag: you always know exactly what is running, and rolling
-back is a matter of restoring the prior `docker-compose.yml`. If you
-deliberately prefer to track the newest published image instead,
-change both `image:` lines to `ghcr.io/br0kensilos/ridgenote:latest`.
-This is an optional, manual operator choice -- RidgeNote does not ship
-any automatic-update tooling, so a `latest` deployment only ever
+If you deliberately prefer to track the newest published image instead,
+change both the web and scheduler `image:` lines to `ghcr.io/br0kensilos/ridgenote:latest`.
+This is an optional, manual operator choice. RidgeNote does not ship
+any automatic-update tooling, so a `latest` deployment only
 updates when you next run `docker compose pull`.
 
-## PostgreSQL version
+---
 
-V1 uses `postgres:17-bookworm` -- pinned to PostgreSQL major version
+### PostgreSQL version
+V1 uses `postgres:17-bookworm`. It is pinned to PostgreSQL major version
 17, while still receiving ordinary PostgreSQL 17.x image/security
 updates on every `docker compose pull`. RidgeNote's own automatic
 startup migrations are ordinary application/database schema
-migrations and do **not** upgrade PostgreSQL itself -- **in-place
+migrations and do **not** upgrade PostgreSQL itself. **In-place
 PostgreSQL major-version upgrades (e.g. 17 -> 18) are not supported by
 this deployment.** A future PostgreSQL major-version change requires
-its own documented procedure, not covered by this guide -- see
-`docs/RUNBOOK_DEPLOYMENT.md` §7b in the source repository. Always back
-up first (see below) before any database-engine upgrade work.
+its own documented procedure, which is not covered by this guide. See
+`docs/RUNBOOK_DEPLOYMENT.md` §7b in the source repository.
+Always back up first; see `docs/RUNBOOK_BACKUP_RESTORE.md`.
 
-## Back up your deployment
-
-Persistent PostgreSQL data lives entirely under `data/postgres` in
-this deployment directory, as a **host bind mount** (not a
-Docker-managed named volume). **A truly fresh installation has nothing
-to back up yet.** Before any upgrade, database-engine maintenance, or
-other maintenance on an existing deployment -- including changing
-`RIDGENOTE_DATABASE_NAME`/`_USER`/`_PASSWORD` -- back up first:
-
-```sh
-docker compose exec -T postgres sh -c \
-  'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f /tmp/ridgenote-backup.dump'
-docker compose cp \
-  postgres:/tmp/ridgenote-backup.dump \
-  "./backups/postgres/ridgenote-backup-$(date +%Y%m%d-%H%M%S).dump"
-chmod 600 ./backups/postgres/ridgenote-backup-*.dump
-docker compose exec -T postgres rm -f /tmp/ridgenote-backup.dump
-```
-
-Confirm each command's exit status before running the next one. This
-is a **logical** backup (`pg_dump`, a consistent snapshot taken by
-PostgreSQL itself) and does **not** require stopping `web` or
-`scheduler`. A raw filesystem copy of `data/postgres` while PostgreSQL
-is actively running is a different thing entirely and must not be
-treated as equivalent to this logical backup -- it is not documented
-or supported here.
-
-**What is and isn't destructive, precisely:**
-
-- `docker compose down` is safe and non-destructive -- it stops the
-  containers; `data/postgres` (a host path, not something Compose
-  manages) is untouched.
-- `docker compose down -v` is **also safe for `data/postgres`
-  specifically** in this deployment -- this Compose file defines no
-  named Docker volumes at all, only the `data/postgres` bind mount, and
-  `-v` only ever removes Docker-managed volumes, never a host bind
-  mount. (This differs from RidgeNote's own local-development Compose
-  file, which does use a named volume -- don't assume the two behave
-  identically.)
-- **Manually deleting `data/postgres`** (e.g. `rm -rf data/postgres`),
-  or otherwise reinitializing/replacing it, **is destructive** and
-  permanently deletes every note, folder, and account. Never do this
-  casually, and never without a current backup taken first.
-
-This backup covers RidgeNote's entire database -- it is a different,
-lower-level mechanism from the in-app **Library Backup** feature (a
-per-user export/restore tool for migration and self-service recovery,
-not a substitute for this infrastructure-level backup, and not an
-administrator disaster-recovery mechanism). Full backup, restore, and
-disaster-recovery procedures -- including how to restore into a fresh
-deployment -- live in `docs/RUNBOOK_BACKUP_RESTORE.md` in the source
-repository.
-
+---
 ## More information
 
 - **Environment/configuration variable reference:**
