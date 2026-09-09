@@ -10,52 +10,50 @@ rehearsal (v1.0.0 did not include this fix) and included the finalized
 standalone deployment package (`deploy/` Compose bundle, Quick Deploy
 procedure, and [`docs/CONFIGURATION.md`](CONFIGURATION.md)).
 
-**RidgeNote v1.0.2 is the next upcoming V1 patch release**, currently
-being finalized from this repository state. It tightens editor
-typography/paragraph spacing toward a more compact, working-notepad
-feel, and adds an explicit `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=0`
-("never expire") sentinel with corresponding configuration-reference
-updates. It requires no migration or manual database action and
-introduces no breaking deployment changes. It is not yet published as
-of this text.
+**RidgeNote v1.0.2 is the current V1 patch release**, tagged `v1.0.2`
+and built from commit `0eb9ef4`. It tightens editor typography/
+paragraph spacing toward a more compact, working-notepad feel, and
+adds an explicit `RIDGENOTE_SESSION_IDLE_TIMEOUT_SECONDS=0` ("never
+expire") sentinel with corresponding configuration-reference
+improvements. It required no migration or manual database action and
+introduced no breaking deployment changes.
 
 The canonical public source repository is
 [`https://github.com/Br0kenSilos/RidgeNote`](https://github.com/Br0kenSilos/RidgeNote).
-The canonical release image is `ghcr.io/br0kensilos/ridgenote:v1.0.1`,
-with equivalent currently published tags `sha-257eee0` (immutable
+The canonical release image is `ghcr.io/br0kensilos/ridgenote:v1.0.2`,
+with equivalent currently published tags `sha-0eb9ef4` (immutable
 per-build provenance) and `latest` (current stable convenience tag).
 All three currently resolve to digest
-`sha256:f115caff1b9e41ea000881ff2cc26cad1925878ab47595a6fd1b78a99da7c517`,
+`sha256:ac6feb7fc6730ad7df494c6e0c20d0cd3ac2100ebdf8e8d8bf9535fd64c2ba85`,
 built for `linux/amd64`. Anonymous (unauthenticated) GHCR pull access
 has been verified for this image.
 
-A GitHub Release for v1.0.1 is published at
-[`github.com/Br0kenSilos/RidgeNote/releases/tag/v1.0.1`](https://github.com/Br0kenSilos/RidgeNote/releases/tag/v1.0.1)
+A GitHub Release for v1.0.2 is published at
+[`github.com/Br0kenSilos/RidgeNote/releases/tag/v1.0.2`](https://github.com/Br0kenSilos/RidgeNote/releases/tag/v1.0.2)
 and is marked as the repository's current/latest release. It carries
 five assets -- `docker-compose.yml`, `env.example`, `README.md`,
-`ridgenote-v1.0.1-deploy.zip`, and `SHA256SUMS` -- reflecting Quick
-Deploy as finalized after two successful Docker2 rehearsal
-deployments; the assets were refreshed from that finalized package and
-verified by downloading them back and confirming checksum and
-byte-for-byte identity against the published source.
+`ridgenote-v1.0.2-deploy.zip`, and `SHA256SUMS` -- built from the same
+finalized deployment package v1.0.1 established, with only the pinned
+image tag advanced; the assets were verified by downloading them back
+and confirming checksum and byte-for-byte identity against the
+published source, including anonymously via the public
+`/releases/latest/download/...` URLs.
 
-**The source repository is now public.** Anonymous, unauthenticated
-access has been verified end to end: the repository and this release
-itself, the `/releases/latest/download/docker-compose.yml`,
-`/releases/latest/download/env.example`, and
-`/releases/latest/download/README.md` asset URLs, and anonymous GHCR
-pull access for the `v1.0.1`, `sha-257eee0`, and `latest` tags (all
-three still resolving to digest
-`sha256:f115caff1b9e41ea000881ff2cc26cad1925878ab47595a6fd1b78a99da7c517`).
-A final fresh install using only the public Quick Deploy path --
-downloading the release assets anonymously rather than using
-working-tree copies -- completed successfully end to end. **Public V1
-publication and deployment acceptance is complete.**
+**The source repository is public**, and anonymous, unauthenticated
+access has been verified end to end for the v1.0.2 release: the
+repository and release page, the `/releases/latest/download/...` asset
+URLs, and anonymous GHCR pull access for the `v1.0.2`, `sha-0eb9ef4`,
+and `latest` tags (all three resolving to the digest above).
+
+**Production upgrade acceptance: the owner completed a real production
+upgrade from v1.0.1 to v1.0.2 successfully**, with production now
+potentially running the `latest` image tag as part of that acceptance.
+v1.0.2 is production-accepted.
 
 **Release immutability has deliberately not been enabled yet.** The
-owner plans to revisit enabling it only after an upcoming production
-installation, so this remains an intentional, still-open step -- not
-an oversight.
+owner plans to revisit enabling it after further production
+experience, so this remains an intentional, still-open step -- not an
+oversight.
 
 ## What RidgeNote V1 is
 
@@ -108,7 +106,7 @@ default -- not a document-versioning system.
 - V1 container images are built and tested for **`linux/amd64`** only.
 - Canonical public source: `https://github.com/Br0kenSilos/RidgeNote`.
   Canonical public image: `ghcr.io/br0kensilos/ridgenote`, current V1
-  tag `v1.0.1` -- see "Release status" above.
+  tag `v1.0.2` -- see "Release status" above.
 
 See [`deploy/README.md`](../deploy/README.md) for the linear Quick
 Deploy procedure and [`docs/RUNBOOK_DEPLOYMENT.md`](RUNBOOK_DEPLOYMENT.md)
@@ -185,6 +183,10 @@ maintenance** (see
   setting) remains a single global server setting applying to all
   users; it is not implemented as a per-user preference in this
   version.
+- The Help/About area does not yet display the actual running
+  RidgeNote version -- deferred future work, preferably deriving it
+  from the running application/build metadata rather than duplicating
+  a hardcoded UI constant.
 
 ## Acceptance evidence
 
